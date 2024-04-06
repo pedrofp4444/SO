@@ -18,4 +18,3 @@ ReflowComments: false
 SpaceAfterCStyleCast: false
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeCaseColon: false
-...

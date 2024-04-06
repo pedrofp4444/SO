@@ -1,0 +1,11 @@
+# Prerequisites
+*.d
+
+# Object files
+*.o
+
+# Folders
+bin
+obj
+tmp
+.vscode
