@@ -22,3 +22,6 @@ obj/%.o: src/%.c
 
 clean:
 	rm -f obj/* tmp/* bin/*
+
+format:
+	clang-format -i src/*.c include/*.h
