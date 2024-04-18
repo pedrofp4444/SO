@@ -1,11 +1,11 @@
+#include <fcntl.h>
 #include <stdio.h>
-#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <string.h>
-#include <stdlib.h>
+#include <unistd.h>
 
 #define SERVER "server_fifo"
 #define CLIENT "client_fifo"
@@ -15,7 +15,6 @@ typedef struct {
   int duration;
   pid_t pid;
 } Task;
-
 
 int main() {
   int fd;
@@ -35,10 +34,11 @@ int main() {
     Task task;
     int bytes_read = 0;
     while ((bytes_read = read(fd, &task, sizeof(task))) > 0) {
-
       if (fork() == 0) {
         // Child process
-        printf("Task received: %s %d %d\n", task.program, task.duration, task.pid);
+        printf(
+            "Task received: %s %d %d\n", task.program, task.duration, task.pid
+        );
 
         // Open client FIFO for writing response
         char fifo_name[50];
@@ -56,37 +56,35 @@ int main() {
           return 1;
         }
 
-        // Fork again to execute the task
         if (fork() == 0) {
           // Child process to execute the task
-          close(pipefd[0]); // Close read end of the pipe
-          dup2(pipefd[1], STDOUT_FILENO); // Redirect stdout to the write end of the pipe
-          close(pipefd[1]); // Close the original write end of the pipe
+          close(pipefd[0]);
+          dup2(
+              pipefd[1], STDOUT_FILENO
+          );  // Redirect stdout to the write end of the pipe
+          close(pipefd[1]);
 
           // Execute task
           execlp(task.program, task.program, NULL);
-          perror("execlp"); // execlp will only return if there's an error
+          perror("execlp");
           exit(1);
-        }
-        else {
+        } else {
           // Parent process
-          close(pipefd[1]); // Close the write end of the pipe
+          close(pipefd[1]);
           char buffer[1024];
           ssize_t nbytes;
           while ((nbytes = read(pipefd[0], buffer, sizeof(buffer))) > 0) {
             // Write the output of the task back to the client
             write(fd_client, buffer, nbytes);
           }
-          close(pipefd[0]); // Close the read end of the pipe
-        }
+          close(pipefd[0]);
 
-        // Close client FIFO and exit
-        close(fd_client);
-        _exit(0);
+          // Close client FIFO and exit
+          close(fd_client);
+          _exit(0);
+        }
       }
     }
+
+    return 0;
   }
-
-  return 0;
-}
-

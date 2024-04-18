@@ -1,10 +1,10 @@
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #define CLIENT "client_fifo"
 #define SERVER "server_fifo"
@@ -15,32 +15,25 @@ typedef struct {
   pid_t pid;
 } Task;
 
-
 int main(int argc, char* argv[]) {
   char input[256];
   int fd_S, fd_c;
-
 
   printf("Enter the task (format: execute <duration> <program>):\n");
   while (fgets(input, sizeof(input), stdin) != NULL) {
     Task task;
     char fifo_name[50];
     if (fork() == 0) {
-
-
       task.pid = getpid();
       if (sscanf(input, "execute %d %s", &task.duration, task.program) == 2) {
+        sprintf(fifo_name, CLIENT "_%d", task.pid);
 
-        sprintf(fifo_name, CLIENT"_%d", task.pid);
-
-
-        // Create client FIFO 
+        // Create client FIFO
 
         if (mkfifo(fifo_name, 0644) < 0) {
           perror("Error creating FIFO");
           exit(1);
         }
-
 
         // Open server FIFO
 
@@ -50,17 +43,16 @@ int main(int argc, char* argv[]) {
           exit(1);
         }
 
-
-
         // Write task to server
         write(fd_S, &task, sizeof(task));
-      }
-      else {
-        printf("Invalid input format. Please use format: execute <duration> <program>\n");
+      } else {
+        printf(
+            "Invalid input format. Please use format: execute <duration> <program>\n"
+        );
       }
 
       // Open client FIFO for reading
-      sprintf(fifo_name, CLIENT"_%d", getpid());
+      sprintf(fifo_name, CLIENT "_%d", getpid());
       printf("fifo_name: %s\n", fifo_name);
       if ((fd_c = open(fifo_name, O_RDONLY)) < 0) {
         perror("Error opening FIFO");
@@ -73,13 +65,12 @@ int main(int argc, char* argv[]) {
         write(STDOUT_FILENO, buffer, bytes_read);
       }
       close(fd_c);
-      _exit(0);        creat_fifo(fifo_name);
-    }
-    else {
+      _exit(0);
+      creat_fifo(fifo_name);
+    } else {
       wait(NULL);
       printf("Enter the task (format: execute <duration> <program>):\n");
     }
-
   }
   return 0;
 }
