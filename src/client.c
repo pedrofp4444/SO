@@ -1,22 +1,85 @@
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <string.h>
 
-#define FIFO_NAME "task_fifo"
+#define CLIENT "client_fifo"
+#define SERVER "server_fifo"
 
-int main() {
-  int fd;
-  char task[256];  // It is needed to minimize the buffer size
+typedef struct {
+  char program[256];
+  int duration;
+  pid_t pid;
+} Task;
 
-  fd = open(FIFO_NAME, O_WRONLY);
 
-  strcpy(task, "Example of task from client");
-  write(fd, task, strlen(task) + 1);
+int main(int argc, char* argv[]) {
+  char input[256];
+  int fd_S, fd_c;
 
-  close(fd);
 
+  printf("Enter the task (format: execute <duration> <program>):\n");
+  while (fgets(input, sizeof(input), stdin) != NULL) {
+    Task task;
+    char fifo_name[50];
+    if (fork() == 0) {
+
+
+      task.pid = getpid();
+      if (sscanf(input, "execute %d %s", &task.duration, task.program) == 2) {
+
+        sprintf(fifo_name, CLIENT"_%d", task.pid);
+
+
+        // Create client FIFO 
+
+        if (mkfifo(fifo_name, 0644) < 0) {
+          perror("Error creating FIFO");
+          exit(1);
+        }
+
+
+        // Open server FIFO
+
+        fd_S = open(SERVER, O_WRONLY);
+        if (fd_S < 0) {
+          perror("Error opening server FIFO for writing");
+          exit(1);
+        }
+
+
+
+        // Write task to server
+        write(fd_S, &task, sizeof(task));
+      }
+      else {
+        printf("Invalid input format. Please use format: execute <duration> <program>\n");
+      }
+
+      // Open client FIFO for reading
+      sprintf(fifo_name, CLIENT"_%d", getpid());
+      printf("fifo_name: %s\n", fifo_name);
+      if ((fd_c = open(fifo_name, O_RDONLY)) < 0) {
+        perror("Error opening FIFO");
+        exit(1);
+      }
+      // Read from client FIFO and write to stdout
+      char buffer[1024];
+      ssize_t bytes_read;
+      while ((bytes_read = read(fd_c, buffer, sizeof(buffer))) > 0) {
+        write(STDOUT_FILENO, buffer, bytes_read);
+      }
+      close(fd_c);
+      _exit(0);        creat_fifo(fifo_name);
+    }
+    else {
+      wait(NULL);
+      printf("Enter the task (format: execute <duration> <program>):\n");
+    }
+
+  }
   return 0;
 }
