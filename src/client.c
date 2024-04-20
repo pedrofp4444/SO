@@ -4,10 +4,13 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
-#define CLIENT "client_fifo"
-#define SERVER "server_fifo"
+#define CLIENT "tmp/client_fifo"
+#define SERVER "tmp/server_fifo"
+
+#define ASK "Enter the task (format: execute <duration> <program>):\n"
 
 typedef struct {
   char program[256];
@@ -19,8 +22,10 @@ int main(int argc, char* argv[]) {
   char input[256];
   int fd_S, fd_c;
 
-  printf("Enter the task (format: execute <duration> <program>):\n");
-  while (fgets(input, sizeof(input), stdin) != NULL) {
+  write(STDOUT_FILENO, ASK, strlen(ASK));
+
+  ssize_t bytes_read = 0;
+  while ((bytes_read = read(STDIN_FILENO, input, sizeof(input))) > 0) {
     Task task;
     char fifo_name[50];
     if (fork() == 0) {
@@ -45,6 +50,7 @@ int main(int argc, char* argv[]) {
 
         // Write task to server
         write(fd_S, &task, sizeof(task));
+
       } else {
         printf(
             "Invalid input format. Please use format: execute <duration> <program>\n"
@@ -54,6 +60,7 @@ int main(int argc, char* argv[]) {
       // Open client FIFO for reading
       sprintf(fifo_name, CLIENT "_%d", getpid());
       printf("fifo_name: %s\n", fifo_name);
+
       if ((fd_c = open(fifo_name, O_RDONLY)) < 0) {
         perror("Error opening FIFO");
         exit(1);
@@ -66,11 +73,12 @@ int main(int argc, char* argv[]) {
       }
       close(fd_c);
       _exit(0);
-      creat_fifo(fifo_name);
+
     } else {
       wait(NULL);
-      printf("Enter the task (format: execute <duration> <program>):\n");
+      write(STDOUT_FILENO, ASK, strlen(ASK));
     }
   }
+  close(fd_S);
   return 0;
 }

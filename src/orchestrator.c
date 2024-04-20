@@ -7,8 +7,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define SERVER "server_fifo"
-#define CLIENT "client_fifo"
+#define SERVER "tmp/server_fifo"
+#define CLIENT "tmp/client_fifo"
 
 typedef struct {
   char program[256];
@@ -42,7 +42,7 @@ int main() {
 
         // Open client FIFO for writing response
         char fifo_name[50];
-        sprintf(fifo_name, "%s_%d", CLIENT, task.pid);
+        sprintf(fifo_name, CLIENT "_%d", task.pid);
         int fd_client = open(fifo_name, O_WRONLY);
         if (fd_client < 0) {
           perror("Error opening client FIFO for writing response");
@@ -72,7 +72,7 @@ int main() {
           // Parent process
           close(pipefd[1]);
           char buffer[1024];
-          ssize_t nbytes;
+          ssize_t nbytes = 0;
           while ((nbytes = read(pipefd[0], buffer, sizeof(buffer))) > 0) {
             // Write the output of the task back to the client
             write(fd_client, buffer, nbytes);
