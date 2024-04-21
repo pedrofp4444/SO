@@ -12,6 +12,7 @@
 
 typedef struct {
   char program[256];
+  int size;
   int duration;
   pid_t pid;
 } Task;
@@ -35,10 +36,18 @@ int main() {
     int bytes_read = 0;
     while ((bytes_read = read(fd, &task, sizeof(task))) > 0) {
       if (fork() == 0) {
+        printf("Received task_%d: %s\n",task.pid ,task.program);
         // Child process
-        printf(
-            "Task received: %s %d %d\n", task.program, task.duration, task.pid
-        );
+
+        char* intructions[task.size];
+        char* token = strtok(task.program, " ");
+        int i = 0;
+        while (token != NULL) {
+          intructions[i] = token;
+          token = strtok(NULL, " ");
+          i++;
+        }
+        intructions[i++] = NULL;
 
         // Open client FIFO for writing response
         char fifo_name[50];
@@ -60,15 +69,16 @@ int main() {
           // Child process to execute the task
           close(pipefd[0]);
           dup2(
-              pipefd[1], STDOUT_FILENO
+            pipefd[1], STDOUT_FILENO
           );  // Redirect stdout to the write end of the pipe
           close(pipefd[1]);
 
           // Execute task
-          execlp(task.program, task.program, NULL);
-          perror("execlp");
+          execvp(intructions[0], intructions);
+          perror("execvp");
           exit(1);
-        } else {
+        }
+        else {
           // Parent process
           close(pipefd[1]);
           char buffer[1024];
@@ -81,6 +91,7 @@ int main() {
 
           // Close client FIFO and exit
           close(fd_client);
+          write(STDOUT_FILENO, "Task completed\n", 15);
           _exit(0);
         }
       }

@@ -14,71 +14,89 @@
 
 typedef struct {
   char program[256];
+  int size;
   int duration;
   pid_t pid;
 } Task;
 
 int main(int argc, char* argv[]) {
-  char input[256];
-  int fd_S, fd_c;
+  int fd_servidor, fd_cliente;
 
-  write(STDOUT_FILENO, ASK, strlen(ASK));
 
-  ssize_t bytes_read = 0;
-  while ((bytes_read = read(STDIN_FILENO, input, sizeof(input))) > 0) {
-    Task task;
-    char fifo_name[50];
-    if (fork() == 0) {
-      task.pid = getpid();
-      if (sscanf(input, "execute %d %s", &task.duration, task.program) == 2) {
-        sprintf(fifo_name, CLIENT "_%d", task.pid);
-
-        // Create client FIFO
-
-        if (mkfifo(fifo_name, 0644) < 0) {
-          perror("Error creating FIFO");
-          exit(1);
-        }
-
-        // Open server FIFO
-
-        fd_S = open(SERVER, O_WRONLY);
-        if (fd_S < 0) {
-          perror("Error opening server FIFO for writing");
-          exit(1);
-        }
-
-        // Write task to server
-        write(fd_S, &task, sizeof(task));
-
-      } else {
-        printf(
-            "Invalid input format. Please use format: execute <duration> <program>\n"
-        );
-      }
-
-      // Open client FIFO for reading
-      sprintf(fifo_name, CLIENT "_%d", getpid());
-      printf("fifo_name: %s\n", fifo_name);
-
-      if ((fd_c = open(fifo_name, O_RDONLY)) < 0) {
-        perror("Error opening FIFO");
-        exit(1);
-      }
-      // Read from client FIFO and write to stdout
-      char buffer[1024];
-      ssize_t bytes_read;
-      while ((bytes_read = read(fd_c, buffer, sizeof(buffer))) > 0) {
-        write(STDOUT_FILENO, buffer, bytes_read);
-      }
-      close(fd_c);
-      _exit(0);
-
-    } else {
-      wait(NULL);
-      write(STDOUT_FILENO, ASK, strlen(ASK));
-    }
+  if (argc < 2) {
+    write(
+      STDOUT_FILENO,
+      "Invalid input format. Please use format: execute <duration> <program>\n",
+      71
+    );
+    exit(0);
   }
-  close(fd_S);
+
+  if (fork() == 0) {
+    Task task;
+    task.duration = atoi(argv[2]);  // Convert duration argument to integer
+    task.size = argc - 3;           // Calculate the number of program arguments
+    task.pid = getpid();
+
+    // Check if memory allocation is successful
+    if (task.program == NULL) {
+      perror("Memory allocation failed");
+      exit(EXIT_FAILURE);
+    }
+    // Copy program arguments to task.program
+
+    for (int i = 3; i < argc; i++) {
+      strcat(task.program, argv[i]);
+      if (i != argc - 1) {  // Add space if not the last argument
+        strcat(task.program, " ");
+      }
+    }
+
+
+    ssize_t bytes_read = 0;
+    char fifo_name[50];
+    sprintf(fifo_name, CLIENT "_%d", task.pid);
+
+    // Create client FIFO
+
+    if (mkfifo(fifo_name, 0644) < 0) {
+      perror("Error creating FIFO");
+      exit(1);
+    }
+
+    // Open server FIFO
+
+    fd_servidor = open(SERVER, O_WRONLY);
+
+    if (fd_servidor < 0) {
+      perror("Error opening server FIFO for writing");
+      exit(1);
+    }
+
+    // Write task to server
+    write(fd_servidor, &task, sizeof(task));
+
+    // Open client FIFO for reading
+    sprintf(fifo_name, CLIENT "_%d", getpid());
+
+    if ((fd_cliente = open(fifo_name, O_RDONLY)) < 0) {
+      perror("Error opening FIFO");
+      exit(1);
+    }
+
+    // Read from client FIFO and write to stdout
+    char buffer[1024];
+    while ((bytes_read = read(fd_cliente, buffer, sizeof(buffer))) > 0) {
+      write(STDOUT_FILENO, buffer, bytes_read);
+    }
+    close(fd_cliente);
+    _exit(0);
+
+  }
+  else {
+    wait(NULL);
+  }
+
+  close(fd_servidor);
   return 0;
 }
