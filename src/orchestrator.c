@@ -13,6 +13,11 @@
   server output 10 sjf
 */
 int main(int argc, char* argv[]) {
+  if (argc < 4) {
+    printf("Usage: %s <path_of_completed_tasks>\n", argv[0]);
+    return 1;
+  }
+
   int fd;
   int completed_tasks = 0;
   struct timeval start, end;

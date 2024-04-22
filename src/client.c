@@ -10,6 +10,10 @@
 #include "utils.h"
 
 int main(int argc, char* argv[]) {
+  if(argc <5){
+    printf("Usage: %s <server> <duration> <program & args>\n", argv[0]);
+    exit(1);
+  }
   int fd_servidor, fd_cliente;
   Task task;
   task.duration = atoi(argv[3]);  // Convert duration argument to integer
@@ -17,10 +21,7 @@ int main(int argc, char* argv[]) {
   strcpy(task.program, argv[4]);
 
   // Check if memory allocation is successful
-  if (task.program == NULL) {
-    perror("Memory allocation failed");
-    exit(EXIT_FAILURE);
-  }
+
   // Copy program arguments to task.program
 
   printf("Received task_%d: %s\n", task.pid, task.program);
