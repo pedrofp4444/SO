@@ -24,4 +24,24 @@ typedef struct {
   Task enqueue[MAX_TASKS];
 } Enqueue;
 
+int createFiFO(char *name);
+
+int openFiFO(char *name, int mode);
+
+void writeFiFO(int fd, void *data, size_t size);
+
+void readFiFO(int fd, void *data, size_t size);
+
+void closeFiFO(int fd);
+
+void parseInstructions(
+    char *program, char *instructions[], int max_instructions
+);
+
+void executeTask(char *program, char *instructions[]);
+
+void redirectStdout(int pipefd[2]);
+
+void redirectStdin(int pipefd[2]);
+
 #endif

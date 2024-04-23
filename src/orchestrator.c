@@ -7,7 +7,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <utils.h>
+
+#include "utils.h"
 
 /*
   server output 10 sjf
@@ -28,16 +29,10 @@ int main(int argc, char* argv[]) {
   completed_tasks = open(argv[1], O_CREAT | O_RDWR, 0644);
 
   // Create server FIFO
-  if (mkfifo(SERVER, 0644) < 0) {
-    perror("Error creating server FIFO");
-    return 1;
-  }
+  createFiFO(SERVER);
 
   // Open server FIFO for reading CLIENT
-  if ((fd = open(SERVER, O_RDONLY)) < 0) {
-    perror("Error opening server FIFO for reading");
-    return 1;
-  }
+  fd = openFiFO(SERVER, O_RDONLY);
 
   while (1) {
     Task task;
@@ -54,26 +49,12 @@ int main(int argc, char* argv[]) {
         // Child process
 
         char* instructions[100];
-        char* program = strdup(task.program);
-        char* token;
-        int i = 0;
-
-        while ((token = strsep(&program, " ")) != NULL) {
-          instructions[i] = token;
-          i++;
-        }
-
-        instructions[i++] = NULL;
-        free(program);
+        parseInstructions(task.program, instructions, MAX_TASKS);
 
         // Open client FIFO for writing response
         char fifo_name[50];
         sprintf(fifo_name, CLIENT "_%d", task.pid);
-        int fd_client = open(fifo_name, O_WRONLY);
-        if (fd_client < 0) {
-          perror("Error opening client FIFO for writing response");
-          return 1;
-        }
+        int fd_client = openFiFO(fifo_name, O_WRONLY);
 
         // Redirect stdout to a pipe
         int pipefd[2];
@@ -91,13 +72,10 @@ int main(int argc, char* argv[]) {
           close(pipefd[1]);
 
           // Execute task
-          execvp(instructions[0], instructions);
+          executeTask(task.program, instructions);
 
           // End timer
           gettimeofday(&end, NULL);
-
-          perror("execvp");
-          exit(1);
         } else {
           // Parent process
           close(pipefd[1]);
@@ -118,12 +96,13 @@ int main(int argc, char* argv[]) {
               completed_tasks_msg, "Tarefa %d executada em %ld segundos\n",
               task.pid, elapsed_time
           );
-          write(
+
+          writeFiFO(
               completed_tasks, completed_tasks_msg, strlen(completed_tasks_msg)
           );
 
           // Close client FIFO and exit
-          close(fd_client);
+          closeFiFO(fd_client);
 
           write(STDOUT_FILENO, "Task completed\n", 15);
           _exit(0);
