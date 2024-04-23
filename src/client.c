@@ -11,16 +11,15 @@
 
 int main(int argc, char* argv[]) {
   if(argc <5){
-    printf("Usage: %s <server> <duration> <program & args>\n", argv[0]);
+    printf("Usage: %s <flag [-u //-p]> <duration> <program & args>\n", argv[0]);
     exit(1);
   }
   int fd_servidor, fd_cliente;
   Task task;
-  task.duration = atoi(argv[3]);  // Convert duration argument to integer
+  task.duration = strtol(argv[3], NULL, 10);  // Convert duration argument to integer
   task.pid = getpid();
   strcpy(task.program, argv[4]);
 
-  // Check if memory allocation is successful
 
   // Copy program arguments to task.program
 

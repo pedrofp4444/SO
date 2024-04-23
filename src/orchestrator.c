@@ -14,7 +14,7 @@
 */
 int main(int argc, char* argv[]) {
   if (argc < 4) {
-    printf("Usage: %s <path_of_completed_tasks>\n", argv[0]);
+    printf("Usage: <output_folder> <parallel-tasks> <sched-policy>");
     return 1;
   }
 
@@ -53,15 +53,18 @@ int main(int argc, char* argv[]) {
 
         // Child process
 
-        char* intructions[100];
-        char* token = strtok(task.program, " ");
+        char* instructions[100];
+        char* program = strdup(task.program);
+        char* token;
         int i = 0;
-        while (token != NULL) {
-          intructions[i] = token;
-          token = strtok(NULL, " ");
+
+        while ((token = strsep(&program, " ")) != NULL) {
+          instructions[i] = token;
           i++;
         }
-        intructions[i++] = NULL;
+
+        instructions[i++] = NULL;
+        free(program);
 
         // Open client FIFO for writing response
         char fifo_name[50];
@@ -88,7 +91,7 @@ int main(int argc, char* argv[]) {
           close(pipefd[1]);
 
           // Execute task
-          execvp(intructions[0], intructions);
+          execvp(instructions[0], instructions);
 
           // End timer
           gettimeofday(&end, NULL);
