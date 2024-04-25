@@ -37,9 +37,7 @@ void closeFiFO(int fd) {
   close(fd);
 }
 
-void parseInstructions(
-    char* program, char* instructions[], int max_instructions
-) {
+void parseInstructions(char* program, char* instructions[]) {
   char* token;
   int i = 0;
 
@@ -52,8 +50,7 @@ void parseInstructions(
   }
 
   // Tokenize the program string
-  while ((token = strsep(&program_copy, " ")) != NULL &&
-         i < max_instructions - 1) {
+  while ((token = strsep(&program_copy, " ")) != NULL) {
     instructions[i] = token;
     i++;
   }
@@ -65,7 +62,7 @@ void parseInstructions(
   free(program_copy);
 }
 
-void executeTask(char* program, char* instructions[]) {
+void executeTask(char* instructions[]) {
   execvp(instructions[0], instructions);
   perror("execvp");
   exit(1);

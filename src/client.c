@@ -11,7 +11,9 @@
 
 int main(int argc, char* argv[]) {
   if (argc < 5) {
-    printf("Usage: %s <flag [-u // -p]> <duration> <program & args>\n", argv[0]);
+    printf(
+        "Usage: %s <flag [-u // -p]> <duration> <program & args>\n", argv[0]
+    );
     exit(1);
   }
 
@@ -21,8 +23,6 @@ int main(int argc, char* argv[]) {
       strtol(argv[3], NULL, 10);  // Convert duration argument to integer
   task.pid = getpid();
   strcpy(task.program, argv[4]);
-
-  printf("Received task_%d: %s\n", task.pid, task.program);
 
   ssize_t bytes_read = 0;
   char fifo_name[50];
@@ -41,12 +41,11 @@ int main(int argc, char* argv[]) {
   sprintf(fifo_name, CLIENT "_%d", getpid());
   fd_cliente = openFiFO(fifo_name, O_RDONLY);
 
-  // Read from client FIFO and write to stdout
+  //Read from client FIFO and write to stdout
   char buffer[1024];
   while ((bytes_read = read(fd_cliente, buffer, sizeof(buffer))) > 0) {
     write(STDOUT_FILENO, buffer, bytes_read);
   }
-
   close(fd_cliente);
   return 0;
 }

@@ -12,7 +12,7 @@
 
 #define CLIENT "tmp/client_fifo"
 #define SERVER "tmp/server_fifo"
-#define MAX_TASKS 30
+#define MAX_TASKS 7
 
 typedef struct {
   char program[308];
@@ -20,25 +20,19 @@ typedef struct {
   pid_t pid;
 } Task;
 
-typedef struct {
-  Task enqueue[MAX_TASKS];
-} Enqueue;
+int createFiFO(char* name);
 
-int createFiFO(char *name);
+int openFiFO(char* name, int mode);
 
-int openFiFO(char *name, int mode);
+void writeFiFO(int fd, void* data, size_t size);
 
-void writeFiFO(int fd, void *data, size_t size);
-
-void readFiFO(int fd, void *data, size_t size);
+void readFiFO(int fd, void* data, size_t size);
 
 void closeFiFO(int fd);
 
-void parseInstructions(
-    char *program, char *instructions[], int max_instructions
-);
+void parseInstructions(char* program, char* instructions[]);
 
-void executeTask(char *program, char *instructions[]);
+void executeTask(char* instructions[]);
 
 void redirectStdout(int pipefd[2]);
 
