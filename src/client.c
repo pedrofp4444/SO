@@ -23,6 +23,7 @@ int main(int argc, char* argv[]) {
       strtol(argv[3], NULL, 10);  // Convert duration argument to integer
   task.pid = getpid();
   strcpy(task.program, argv[4]);
+  printf("task.id: %d\n", task.pid);
 
   ssize_t bytes_read = 0;
   char fifo_name[50];

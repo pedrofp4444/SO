@@ -38,7 +38,91 @@ int main(int argc, char* argv[]) {
   // Open server FIFO for reading CLIENT
   server_fd = openFiFO(SERVER, O_RDONLY);
 
-  int pipefd1[2];  // Parent writes, child reads
+  // Main loop to receive tasks and enqueue them
+  while (1) {
+    Task task;
+    int bytes_read = 0;
+    if ((bytes_read = read(server_fd, &task, sizeof(task))) > 0) {
+      printf("Received task_%d: %s\n", task.pid, task.program);
+
+      // Enqueue task
+      enqueue(queue, task);
+      print_queue(queue);
+    }
+    if (4 == queue->size) {
+
+      while (!isEmpty(queue) && (aux_parallel_taks < parallel_tasks)) {
+        printf("########################\n");
+        printf("########################\n");
+        printf("########################\n");
+
+        aux_parallel_taks++;
+
+        Task task_aux;
+        if (strcmp(scheduling_algorithm, "sjf") == 0) {
+          printf("-------------------sjf\n");
+          task_aux = dequeue_Priority(queue);
+          printf("-------------------sjf\n");
+        }
+        else {
+          task_aux = dequeue(queue);
+        }
+        printf("Depois da queu");
+        print_queue(queue);
+        printf("task_aux: %s\n", task_aux.program);
+
+        if (fork() == 0) {
+          char fifo_name[50];
+          sprintf(fifo_name, CLIENT "_%d", task_aux.pid);
+          int fd_client = openFiFO(fifo_name, O_WRONLY);
+
+          dup2(fd_client, STDOUT_FILENO);
+
+          char* instructions[50];
+          printf("Dentro do fork\n");
+          printf("task_aux: %s\n", task_aux.program);
+          printf("task_aux.duration: %d\n", task_aux.duration);
+          parseInstructions(task_aux.program, instructions);
+
+          executeTask(instructions);
+
+          close(fd_client);
+          exit(0);
+        }
+        else {
+          wait(NULL);
+          aux_parallel_taks--;
+
+          char task_done[100];
+          sprintf(
+            task_done, "Task %d executed in %d milliseconds\n", task_aux.pid,
+            task_aux.duration
+          );
+
+          writeFiFO(completed_tasks, task_done, strlen(task_done));
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+/*  4 tentativa
+int pipefd1[2];  // Parent writes, child reads
+  int pipefd2[2];  // Parent reads, child writes
+
+  if (pipe(pipefd1) == -1 || pipe(pipefd2) == -1) {
+    perror("pipe");
+    return 1;
+  }
+
+  // Fork the process for enqueuing tasks
+  if (fork() == 0) {
+    close(pipefd1[1]);  // Close the write end of pipefd1 in the child process
+    close(pipefd2[0]);  // Close the read end of pipefd2 in the child process
+
+    Task task;
+    Queue* queue = createQueue();int pipefd1[2];  // Parent writes, child reads
   int pipefd2[2];  // Parent reads, child writes
 
   if (pipe(pipefd1) == -1 || pipe(pipefd2) == -1) {
@@ -94,7 +178,8 @@ int main(int argc, char* argv[]) {
 
           if (strcmp(scheduling_algorithm, "sjf") == 0) {
             task_aux = dequeue_Priority(received_queue);
-          } else {
+          }
+          else {
             task_aux = dequeue(received_queue);
           }
 
@@ -117,9 +202,11 @@ int main(int argc, char* argv[]) {
             // Close client FIFO
             close(fd_client);
 
+
             exit(0);  // Exit child process
 
-          } else {
+          }
+          else {
             // Parent process
             wait(NULL);
             aux_parallel_taks--;
@@ -143,8 +230,8 @@ int main(int argc, char* argv[]) {
             // Write completion message to the shared FIFO (completed_tasks)
             char task_done[100];
             sprintf(
-                task_done, "Task %d executed in %d milliseconds\n",
-                task_aux.pid, task_aux.duration
+              task_done, "Task %d executed in %d milliseconds\n",
+              task_aux.pid, task_aux.duration
             );
 
             writeFiFO(completed_tasks, task_done, strlen(task_done));
@@ -166,7 +253,124 @@ int main(int argc, char* argv[]) {
   wait(NULL);
   wait(NULL);
   return 0;
-}
+    while (1) {
+      while (read(server_fd, &task, sizeof(task)) > 0) {
+        enqueue(queue, task);
+        printf("Received task_%d: %s\n", task.pid, task.program);
+        print_queue(queue);
+
+        // Write the queue to pipefd2
+        write(pipefd2[1], queue, sizeof(Queue));
+
+        // Read the queue from pipefd1
+        read(pipefd1[0], queue, sizeof(Queue));
+      }
+    }
+    // Clean up resources
+    close(pipefd1[0]);
+    close(pipefd2[1]);
+    close(server_fd);
+    exit(0);
+  }
+
+  // Fork the process for dequeuing and executing tasks
+  if (fork() == 0) {
+    close(pipefd1[0]);  // Close the read end of pipefd1 in the child process
+    close(pipefd2[1]);  // Close the write end of pipefd2 in the child process
+
+    while (1) {
+      Queue* received_queue = malloc(sizeof(Queue));
+
+      // Read the queue from pipefd2
+      read(pipefd2[0], received_queue, sizeof(Queue));
+      printf("Received queue from pipefd2:\n");
+      print_queue(received_queue);
+
+      while (1) {
+        Task task_aux;
+
+        if (!isEmpty(received_queue) && aux_parallel_taks < parallel_tasks) {
+          printf("dentro do if empty\n\n");
+
+          if (strcmp(scheduling_algorithm, "sjf") == 0) {
+            task_aux = dequeue_Priority(received_queue);
+          }
+          else {
+            task_aux = dequeue(received_queue);
+          }
+
+          if (fork() == 0) {
+            // Child process
+            char* instructions[50];
+            parseInstructions(task_aux.program, instructions);
+
+            // Open client FIFO for writing
+            char fifo_name[50];
+            sprintf(fifo_name, CLIENT "_%d", task_aux.pid);
+            int fd_client = openFiFO(fifo_name, O_WRONLY);
+
+            // Redirect stdout to client FIFO
+            dup2(fd_client, STDOUT_FILENO);
+
+            // Execute the task
+            executeTask(instructions);
+
+            // Close client FIFO
+            close(fd_client);
+
+
+            exit(0);  // Exit child process
+
+          }
+          else {
+            // Parent process
+            wait(NULL);
+            aux_parallel_taks--;
+
+            // Open client FIFO for reading
+            char fifo_name[50];
+            sprintf(fifo_name, CLIENT "_%d", task_aux.pid);
+            int fd_client = openFiFO(fifo_name, O_RDONLY);
+
+            // Read from client FIFO and write back to the client
+            char buffer[1024];
+            ssize_t nbytes = 0;
+
+            while ((nbytes = read(fd_client, buffer, sizeof(buffer))) > 0) {
+              write(fd_client, buffer, nbytes);
+            }
+
+            // Close client FIFO
+            close(fd_client);
+
+            // Write completion message to the shared FIFO (completed_tasks)
+            char task_done[100];
+            sprintf(
+              task_done, "Task %d executed in %d milliseconds\n",
+              task_aux.pid, task_aux.duration
+            );
+
+            writeFiFO(completed_tasks, task_done, strlen(task_done));
+            close(completed_tasks);
+          }
+        }
+      }
+      write(pipefd1[1], received_queue, sizeof(Queue));
+
+      free(received_queue);
+    }
+
+    // Clean up resources
+    close(pipefd1[1]);
+    close(pipefd2[0]);
+    exit(0);
+  }
+
+  wait(NULL);
+  wait(NULL);
+  return 0;
+
+*/
 
 /* 3 tentaiva
  Task task;

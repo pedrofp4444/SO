@@ -17,6 +17,7 @@ Queue* createQueue() {
   Queue* queue = malloc(sizeof(Queue));
   queue->start = 0;
   queue->end = 0;
+  queue->size = 0;
   printf("Queue created\n");
   return queue;
 }
@@ -32,6 +33,7 @@ void enqueue(Queue* queue, Task task) {
   }
   queue->enqueue[queue->end] = task;
   queue->end = (queue->end + 1) % MAX_TASKS;
+  queue->size++;
 }
 
 Task dequeue(Queue* queue) {
@@ -49,24 +51,37 @@ Task dequeue_Priority(Queue* queue) {
     fprintf(stderr, "Queue is empty. Cannot dequeue.\n");
     exit(EXIT_FAILURE);
   }
-  int highestPriority = queue->enqueue[0].duration;
-  int index = 0;
 
-  for (int i = 0; i <= queue->end; i++) {
+  int highestPriority = queue->enqueue[queue->start].duration;
+  int index = queue->start;
+
+  printf("highestPriority: %d\n", highestPriority);
+
+
+  for (int i = queue->start + 1; i != (queue->end + 1) % MAX_TASKS;
+       i = (i + 1) % MAX_TASKS) {
     if (queue->enqueue[i].duration < highestPriority) {
       highestPriority = queue->enqueue[i].duration;
       index = i;
     }
   }
-  Task dequeuedTask = queue->enqueue[index];
-  queue->start = (queue->start + 1) % MAX_TASKS;
+  index -=1;
+  printf("index: %d\n", index);
 
-  for (int i = index; i < queue->end; i++) {
-    if (queue->enqueue[i].duration > 10) {
-      queue->enqueue[i].duration -= 10;
-    }
-    queue->enqueue[i] = queue->enqueue[i + 1];
+  Task dequeuedTask = queue->enqueue[index];
+
+  // Shift elements to the left
+  for (int i = index; i != queue->start; i = (i - 1 + MAX_TASKS) % MAX_TASKS) {
+    queue->enqueue[i] = queue->enqueue[(i - 1 + MAX_TASKS) % MAX_TASKS];
   }
+
+  // Update queue indices
+  queue->start = (queue->start + 1) % MAX_TASKS;
+  queue->end = (queue->end - 1 + MAX_TASKS) % MAX_TASKS;
+
+  printf("dequeuedTask: %s\n", dequeuedTask.program);
+  printf("dequeuedTask duration: %d\n", dequeuedTask.duration);
+
   return dequeuedTask;
 }
 
@@ -74,6 +89,7 @@ void print_queue(Queue* queue) {
   printf("Queue: \n");
   printf("start: %d\n", queue->start);
   printf("Queue end: %d\n", queue->end);
+  printf("Queue size: %d\n", queue->size);
 
   for (int i = queue->start; i < queue->end; i++) {
     printf("Task inside  %d: %s\n", i, queue->enqueue[i].program);

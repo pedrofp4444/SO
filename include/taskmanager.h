@@ -17,6 +17,7 @@
 typedef struct {
   Task enqueue[MAX_TASKS];
   int start, end;
+  int size;
 } Queue;
 
 Queue* createQueue();
