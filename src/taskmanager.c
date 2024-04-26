@@ -52,37 +52,30 @@ Task dequeue_Priority(Queue* queue) {
     exit(EXIT_FAILURE);
   }
 
-  int highestPriority = queue->enqueue[queue->start].duration;
+  int min = queue->enqueue[queue->start].duration;
+  Task minTask = queue->enqueue[queue->start];
   int index = queue->start;
 
-  printf("highestPriority: %d\n", highestPriority);
-
-
-  for (int i = queue->start + 1; i != (queue->end + 1) % MAX_TASKS;
-       i = (i + 1) % MAX_TASKS) {
-    if (queue->enqueue[i].duration < highestPriority) {
-      highestPriority = queue->enqueue[i].duration;
+  for (int i = queue->start; i < queue->end; i++) {
+    if (queue->enqueue[i].duration != -1 && queue->enqueue[i].duration < min) {
+      min = queue->enqueue[i].duration;
+      minTask = queue->enqueue[i];
       index = i;
     }
+    if (queue->enqueue[i].duration > 10) {
+      queue->enqueue[i].duration -= 10;
+    }
   }
-  index -=1;
   printf("index: %d\n", index);
+ 
 
-  Task dequeuedTask = queue->enqueue[index];
 
-  // Shift elements to the left
-  for (int i = index; i != queue->start; i = (i - 1 + MAX_TASKS) % MAX_TASKS) {
-    queue->enqueue[i] = queue->enqueue[(i - 1 + MAX_TASKS) % MAX_TASKS];
+  for (int i = index; i < queue->end - 1; i++) {
+    queue->enqueue[i] = queue->enqueue[i + 1];
   }
+  queue->enqueue[queue->end - 1].duration = -1;
 
-  // Update queue indices
-  queue->start = (queue->start + 1) % MAX_TASKS;
-  queue->end = (queue->end - 1 + MAX_TASKS) % MAX_TASKS;
-
-  printf("dequeuedTask: %s\n", dequeuedTask.program);
-  printf("dequeuedTask duration: %d\n", dequeuedTask.duration);
-
-  return dequeuedTask;
+  return minTask;
 }
 
 void print_queue(Queue* queue) {
@@ -92,7 +85,7 @@ void print_queue(Queue* queue) {
   printf("Queue size: %d\n", queue->size);
 
   for (int i = queue->start; i < queue->end; i++) {
-    printf("Task inside  %d: %s\n", i, queue->enqueue[i].program);
+    printf("Task inside  %d: %d(mseg) %s\n", i, queue->enqueue[i].duration, queue->enqueue[i].program);
   }
 }
 

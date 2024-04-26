@@ -67,10 +67,10 @@ int main(int argc, char* argv[]) {
         else {
           task_aux = dequeue(queue);
         }
-        printf("Depois da queu");
+        printf("<<<<<<<<<<<<<<<<<<<<<<<<<<Depois da queu");
         print_queue(queue);
         printf("task_aux: %s\n", task_aux.program);
-
+        printf("============================\n");
         if (fork() == 0) {
           char fifo_name[50];
           sprintf(fifo_name, CLIENT "_%d", task_aux.pid);
