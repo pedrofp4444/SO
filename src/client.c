@@ -10,14 +10,50 @@
 #include "utils.h"
 
 int main(int argc, char* argv[]) {
-  if (argc < 5) {
+  Task task;
+  pid_t pid = getpid();
+
+  char fifo_name[50];
+  sprintf(fifo_name, CLIENT "_%d", pid);
+  createFiFO(fifo_name);
+
+  if (strcmp(argv[0], "status") == 0) {
+    task.type = STATUS;
+  } else if (argc < 5) {
     printf(
         "Usage: %s <flag [-u // -p]> <duration> <program & args>\n", argv[0]
     );
     exit(1);
+
+  } else {
+    task.type = TASK;
+  }
+  task.id = -1;
+  task.pid = pid;
+  task.duration = strtol(argv[3], NULL, 10);
+  strcpy(task.program, argv[4]);
+
+  int fd_server = openFiFO(SERVER, O_WRONLY);
+  write(fd_server, &task, sizeof(task));
+
+  int bytes_read = 0;
+
+  int fd_client = openFiFO(fifo_name, O_RDONLY);
+  if (read(fd_client, &task, sizeof(task)) > 0) {
+    printf("Task id: %d\n", task.id);
   }
 
-  int fd_servidor, fd_cliente;
+  close(fd_server);
+  return 0;
+}
+
+/*
+
+velhos: +13 7 / 8
+novos :
+
+
+ int fd_servidor, fd_cliente;
   Task task;
   task.duration =
       strtol(argv[3], NULL, 10);  // Convert duration argument to integer
@@ -38,15 +74,6 @@ int main(int argc, char* argv[]) {
   // Write task to server
   writeFiFO(fd_servidor, &task, sizeof(task));
 
-  // Open client FIFO for reading
-  sprintf(fifo_name, CLIENT "_%d", getpid());
-  fd_cliente = openFiFO(fifo_name, O_RDONLY);
-
-  //Read from client FIFO and write to stdout
-  char buffer[1024];
-  while ((bytes_read = read(fd_cliente, buffer, sizeof(buffer))) > 0) {
-    write(STDOUT_FILENO, buffer, bytes_read);
-  }
   close(fd_cliente);
   return 0;
-}
+*/

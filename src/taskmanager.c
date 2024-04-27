@@ -67,8 +67,6 @@ Task dequeue_Priority(Queue* queue) {
     }
   }
   printf("index: %d\n", index);
- 
-
 
   for (int i = index; i < queue->end - 1; i++) {
     queue->enqueue[i] = queue->enqueue[i + 1];
@@ -85,10 +83,23 @@ void print_queue(Queue* queue) {
   printf("Queue size: %d\n", queue->size);
 
   for (int i = queue->start; i < queue->end; i++) {
-    printf("Task inside  %d: %d(mseg) %s\n", i, queue->enqueue[i].duration, queue->enqueue[i].program);
+    printf(
+        "Task inside  %d: %d(mseg) %s\n", i, queue->enqueue[i].duration,
+        queue->enqueue[i].program
+    );
   }
 }
 
 void freeQueue(Queue* queue) {
   free(queue);
+}
+
+int available_slave(int parallel_tasks[]) {
+  for (int i = 0; i < sizeof(parallel_tasks); i++) {
+    if (parallel_tasks[i] == 0) {
+      parallel_tasks[i] = 1;
+      return i;
+    }
+  }
+  return -1;
 }

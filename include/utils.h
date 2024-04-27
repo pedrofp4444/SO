@@ -12,11 +12,19 @@
 
 #define CLIENT "tmp/client_fifo"
 #define SERVER "tmp/server_fifo"
+#define SLAVER "tmp/slaver_fifo"
 #define MAX_TASKS 7
 
+typedef enum type {
+  STATUS,
+  TASK
+} Type;
+
 typedef struct {
+  Type type;
   char program[308];
   int duration;
+  int id;
   pid_t pid;
 } Task;
 
