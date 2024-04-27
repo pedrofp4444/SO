@@ -49,9 +49,8 @@ int main(int argc, char* argv[]) {
       close(fd_client);
     }
     if (queue->size > 3) {
-      int aux = 5;
       int aux_tasks = 0;
-      if (aux_tasks < parallel_tasks && !isEmpty(queue)) {
+      while (aux_tasks < parallel_tasks && !isEmpty(queue)) {
         printf("aux_tasks 1º: %d\n", aux_tasks);
         Task task_aux;
         if (strcmp(scheduling_algorithm, "sjf") == 0) {
@@ -78,11 +77,9 @@ int main(int argc, char* argv[]) {
           _exit(0);
         }
         printf("aux_tasks 2º: %d\n", aux_tasks);
-
-        aux--;
       }
 
-      if (aux_tasks < 1) {
+      if (aux_tasks >0) {
         aux_tasks--;
         wait(NULL);
       }
