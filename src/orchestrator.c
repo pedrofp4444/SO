@@ -34,7 +34,6 @@ int main(int argc, char* argv[]) {
   int server_fd = openFiFO(SERVER, O_RDONLY);
 
   while (1) {
-
     Task task;
     if (read(server_fd, &task, sizeof(task)) > 0) {
       printf("Received task_%d: %s\n", task.pid, task.program);
@@ -50,21 +49,22 @@ int main(int argc, char* argv[]) {
       close(fd_client);
     }
     if (queue->size > 3) {
-
+      int aux = 5;
       int aux_tasks = 0;
-      while (aux_tasks < parallel_tasks) {
+      if (aux_tasks < parallel_tasks && !isEmpty(queue)) {
+        printf("aux_tasks 1º: %d\n", aux_tasks);
         Task task_aux;
         if (strcmp(scheduling_algorithm, "sjf") == 0) {
           printf("================sjf\n");
           task_aux = dequeue_Priority(queue);
-          printf("Dequeued task_%d: %s\n", task.pid, task.program);
+          printf("Dequeued task_%d: %s\n", task_aux.pid, task_aux.program);
           print_queue(queue);
           printf("================sjf\n");
         }
         else {
           printf("----------------------fifo\n");
           task_aux = dequeue(queue);
-          printf("Dequeued task_%d: %s\n", task.pid, task.program);
+          printf("Dequeued task_%d: %s\n", task_aux.pid, task_aux.program);
           print_queue(queue);
           printf("------------------------fifo\n");
         }
@@ -72,19 +72,20 @@ int main(int argc, char* argv[]) {
         if (fork() == 0) {
           char* instructions[100];
           parseInstructions(task_aux.program, instructions);
-          printf("-----FORK------\n+++++++task_aux.program: %s\n", task_aux.program);
-          exit(0);
+          printf(
+            "-----FORK------\n+++++++task_aux.program: %s\n", task_aux.program
+          );
+          _exit(0);
         }
+        printf("aux_tasks 2º: %d\n", aux_tasks);
 
-        aux_tasks--;
+        aux--;
       }
 
-      while (aux_tasks < 1) {
+      if (aux_tasks < 1) {
+        aux_tasks--;
         wait(NULL);
       }
-
-
-
     }
   }
 
