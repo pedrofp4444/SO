@@ -7,96 +7,73 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define CLIENT "tmp/client_fifo"
-#define SERVER "tmp/server_fifo"
-
-#define ASK "Enter the task (format: execute <duration> <program>):\n"
-
-typedef struct {
-  char program[256];
-  int size;
-  int duration;
-  pid_t pid;
-} Task;
+#include "utils.h"
 
 int main(int argc, char* argv[]) {
-  int fd_servidor, fd_cliente;
+  Task task;
+  pid_t pid = getpid();
 
+  char fifo_name[50];
+  sprintf(fifo_name, CLIENT "_%d", pid);
+  createFiFO(fifo_name);
 
-  if (argc < 2) {
-    write(
-      STDOUT_FILENO,
-      "Invalid input format. Please use format: execute <duration> <program>\n",
-      71
+  if (strcmp(argv[0], "status") == 0) {
+    task.type = STATUS;
+  } else if (argc < 5) {
+    printf(
+        "Usage: %s <flag [-u // -p]> <duration> <program & args>\n", argv[0]
     );
-    exit(0);
+    exit(1);
+
+  } else {
+    task.type = TASK;
+  }
+  task.id = -1;
+  task.pid = pid;
+  task.duration = strtol(argv[3], NULL, 10);
+  strcpy(task.program, argv[4]);
+
+  int fd_server = openFiFO(SERVER, O_WRONLY);
+  write(fd_server, &task, sizeof(task));
+
+  int bytes_read = 0;
+
+  int fd_client = openFiFO(fifo_name, O_RDONLY);
+  if (read(fd_client, &task, sizeof(task)) > 0) {
+    printf("Task id: %d\n", task.id);
   }
 
-  if (fork() == 0) {
-    Task task;
-    task.duration = atoi(argv[2]);  // Convert duration argument to integer
-    task.size = argc - 3;           // Calculate the number of program arguments
-    task.pid = getpid();
-
-    // Check if memory allocation is successful
-    if (task.program == NULL) {
-      perror("Memory allocation failed");
-      exit(EXIT_FAILURE);
-    }
-    // Copy program arguments to task.program
-
-    for (int i = 3; i < argc; i++) {
-      strcat(task.program, argv[i]);
-      if (i != argc - 1) {  // Add space if not the last argument
-        strcat(task.program, " ");
-      }
-    }
-
-
-    ssize_t bytes_read = 0;
-    char fifo_name[50];
-    sprintf(fifo_name, CLIENT "_%d", task.pid);
-
-    // Create client FIFO
-
-    if (mkfifo(fifo_name, 0644) < 0) {
-      perror("Error creating FIFO");
-      exit(1);
-    }
-
-    // Open server FIFO
-
-    fd_servidor = open(SERVER, O_WRONLY);
-
-    if (fd_servidor < 0) {
-      perror("Error opening server FIFO for writing");
-      exit(1);
-    }
-
-    // Write task to server
-    write(fd_servidor, &task, sizeof(task));
-
-    // Open client FIFO for reading
-    sprintf(fifo_name, CLIENT "_%d", getpid());
-
-    if ((fd_cliente = open(fifo_name, O_RDONLY)) < 0) {
-      perror("Error opening FIFO");
-      exit(1);
-    }
-
-    // Read from client FIFO and write to stdout
-    char buffer[1024];
-    while ((bytes_read = read(fd_cliente, buffer, sizeof(buffer))) > 0) {
-      write(STDOUT_FILENO, buffer, bytes_read);
-    }
-    close(fd_cliente);
-    _exit(0);
-
-  }
-  else {
-    wait(NULL);
-  }
-
-  close(fd_servidor);
+  close(fd_server);
   return 0;
 }
+
+/*
+
+velhos: +13 7 / 8
+novos :
+
+
+ int fd_servidor, fd_cliente;
+  Task task;
+  task.duration =
+      strtol(argv[3], NULL, 10);  // Convert duration argument to integer
+  task.pid = getpid();
+  strcpy(task.program, argv[4]);
+  printf("task.id: %d\n", task.pid);
+
+  ssize_t bytes_read = 0;
+  char fifo_name[50];
+  sprintf(fifo_name, CLIENT "_%d", task.pid);
+
+  // Create client FIFO
+  createFiFO(fifo_name);
+
+  // Open server FIFO
+  fd_servidor = openFiFO(SERVER, O_WRONLY);
+
+  // Write task to server
+  writeFiFO(fd_servidor, &task, sizeof(task));
+
+  close(fd_cliente);
+  return 0;
+*/
