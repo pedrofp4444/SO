@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     exit(1);
 
   } else {
-    task.type = TASK;
+    task.type = EXECUTE;
   }
   task.id = -1;
   task.pid = pid;

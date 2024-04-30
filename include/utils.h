@@ -17,7 +17,7 @@
 
 typedef enum type {
   STATUS,
-  TASK
+  EXECUTE
 } Type;
 
 typedef struct {

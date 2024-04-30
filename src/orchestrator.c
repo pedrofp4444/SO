@@ -16,6 +16,7 @@
 */
 
 #define MAX_COMMANDS 10
+#define PATH_MAX 4096
 
 int exec_command(char* arg) {
     char *exec_args[MAX_COMMANDS];
@@ -32,84 +33,68 @@ int exec_command(char* arg) {
     }
     exec_args[i] = NULL;
     
-    if (execvp(exec_args[0], exec_args) == -1) {
-      perror("execvp error");
-      _exit(EXIT_FAILURE);
+    return execvp(exec_args[0], exec_args);
+}
+
+int execute_task(int number_of_commands, char** commands, char* output_file) {
+    int i;
+    int in_fd = 0; // Início da pipeline: stdin
+    int out_fd; // Descritor de arquivo para o arquivo de saída
+
+    for (i = 0; i < number_of_commands; i++) {
+        int fd[2];
+        pipe(fd);
+
+        if (fork() == 0) {
+            dup2(in_fd, STDIN_FILENO); // Define o stdin do processo filho
+            if (i < number_of_commands - 1) {
+                dup2(fd[1], STDOUT_FILENO); // Define o stdout do processo filho
+            } else {
+                // Para o último comando, redireciona a saída para o arquivo especificado
+                out_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                if (out_fd < 0) {
+                    perror("open");
+                    exit(EXIT_FAILURE);
+                }
+                dup2(out_fd, STDOUT_FILENO);
+                close(out_fd);
+            }
+            close(fd[0]); // Fecha o lado de leitura do pipe não utilizado pelo filho
+
+            exec_command(commands[i]);
+            _exit(EXIT_FAILURE); // exec_command só retorna se houver erro
+        } else {
+            wait(NULL); // Espera o processo filho terminar
+            close(fd[1]); // Fecha o lado de escrita do pipe no processo pai
+            in_fd = fd[0]; // O próximo comando usará a saída deste pipe como entrada
+        }
     }
 
     return 0;
 }
 
-void execute_task(Task task, char* output_folder) {
-    char* instructions[MAX_COMMANDS];
-    parseInstructions(task.program, instructions);
-
-    int number_of_commands = 0;
-    while (instructions[number_of_commands] != NULL) {
-        number_of_commands++;
+// Função para contar o número de comandos baseado no delimitador '|'
+int count_commands(char* program) {
+    int count = 1;
+    const char* tmp = program;
+    while((tmp = strchr(tmp, '|')) != NULL) {
+        count++;
+        tmp++;
     }
+    return count;
+}
 
-    int in_fd = 0; // Início da pipeline: stdin
-    int i;
-    char filename[256];
-
-  printf("FOLDER: %s\n", output_folder);
-    // Cria o nome do arquivo com base no ID da tarefa e no diretório de saída
-    snprintf(filename, sizeof(filename), "%s/task_%d_output.txt", output_folder, task.id);
-
-    // Abre o arquivo para escrita
-    int file_fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (file_fd < 0) {
-        perror("open");
-        exit(EXIT_FAILURE);
+// Função para dividir a string do programa em comandos individuais
+void split_commands(char* program, char** task_commands, int number_of_commands) {
+    const char delim[2] = "|";
+    char *token;
+    token = strtok(program, delim);
+    int i = 0;
+    while(token != NULL && i < number_of_commands) {
+        task_commands[i] = token;
+        token = strtok(NULL, delim);
+        i++;
     }
-
-    for (i = 0; i < number_of_commands; i++) {
-        int fd[2];
-        if (pipe(fd) == -1) {
-            perror("pipe error");
-            exit(EXIT_FAILURE);
-        }
-
-        pid_t pid = fork();
-        if (pid == -1) {
-            perror("fork error");
-            exit(EXIT_FAILURE);
-        }
-
-        if (pid == 0) {
-            if (dup2(in_fd, STDIN_FILENO) == -1) {
-                perror("dup2 stdin error");
-                _exit(EXIT_FAILURE);
-            }
-            if (i < number_of_commands - 1) {
-                if (dup2(fd[1], STDOUT_FILENO) == -1) {
-                    perror("dup2 stdout error");
-                    _exit(EXIT_FAILURE);
-                }
-            } else {
-                if (dup2(file_fd, STDOUT_FILENO) == -1) {
-                    perror("dup2 file_fd error");
-                    _exit(EXIT_FAILURE);
-                }
-            }
-            close(fd[0]);
-            close(fd[1]); // Importante fechar o descritor de escrita no processo filho
-
-            exec_command(instructions[i]);
-        } else {
-            wait(NULL); // Espera o processo filho terminar
-            close(fd[1]); // Fecha o lado de escrita do pipe no processo pai
-            if (i == number_of_commands - 1) {
-                close(fd[0]); // Se for o último comando, fecha o lado de leitura do pipe
-            } else {
-                in_fd = fd[0]; // O próximo comando usará a saída deste pipe como entrada
-            }
-        }
-    }
-
-    // Fecha o arquivo
-    close(file_fd);
 }
 
 int main(int argc, char* argv[]) {
@@ -123,7 +108,7 @@ int main(int argc, char* argv[]) {
     int parallel_tasks = strtol(argv[2], NULL, 10);
     char* scheduling_algorithm = argv[3];
 
-    // Verifica se a pasta de saída existe, se não, tenta criá-lo
+    // Verifica se a pasta de saída existe, se não, tenta criá-la
     struct stat st = {0};
     if (stat(output_folder, &st) == -1) {
         mkdir(output_folder, 0700);
@@ -137,6 +122,10 @@ int main(int argc, char* argv[]) {
     Queue* queue = createQueue();
     createFiFO(SERVER);
     int server_fd = openFiFO(SERVER, O_RDONLY);
+    
+    // Cria um pipe para comunicação entre processos
+    int fd[2];
+    pipe(fd);
 
     while (1) {
         Task task;
@@ -154,7 +143,7 @@ int main(int argc, char* argv[]) {
             close(fd_client);
         }
 
-        if (queue->size > 3) {
+        if (queue->size > 2) {
             int aux_tasks = 0;
             while (aux_tasks < parallel_tasks && !isEmpty(queue)) {
                 Task task_aux;
@@ -164,8 +153,21 @@ int main(int argc, char* argv[]) {
                     task_aux = dequeue(queue);
                 }
 
+                printf("Task: %s\n", task_aux.program);
+
                 if (fork() == 0) {
-                    execute_task(task_aux, output_folder);
+                    
+                    char output_path[PATH_MAX];
+                    snprintf(output_path, sizeof(output_path), "%s/task_%d.output", output_folder, task_aux.id);
+                    char* program = strdup(task_aux.program); // Duplica a string para evitar modificar o original
+                    int number_of_commands = count_commands(program);
+                    char* task_commands[number_of_commands]; // Cria um array de strings para os comandos
+
+                    split_commands(program, task_commands, number_of_commands);
+
+                    // Executa a tarefa
+                    execute_task(number_of_commands, task_commands, output_path);
+
                     _exit(0);
                 } else {
                     aux_tasks++;
