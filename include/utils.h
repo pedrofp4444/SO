@@ -26,6 +26,7 @@ typedef struct {
   int duration;
   int id;
   pid_t pid;
+  struct timeval start_time;
 } Task;
 
 int createFiFO(char* name);

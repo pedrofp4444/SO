@@ -23,7 +23,7 @@ Queue* createQueue() {
 }
 
 int isEmpty(Queue* queue) {
-  if(queue->enqueue[queue->start].duration == -1) {
+  if (queue->enqueue[queue->start].duration == -1) {
     return 1;
   }
   return queue->start == queue->end;

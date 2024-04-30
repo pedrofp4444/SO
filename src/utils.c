@@ -7,6 +7,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#define MAX_COMMANDS 10
+#define PATH_MAX 4096
+
 int createFiFO(char* name) {
   int result = mkfifo(name, 0644);
   if (result < 0) {
