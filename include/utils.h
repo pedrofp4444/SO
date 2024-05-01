@@ -12,8 +12,9 @@
 
 #define CLIENT "tmp/client_fifo"
 #define SERVER "tmp/server_fifo"
-#define SLAVER "tmp/slaver_fifo"
 #define MAX_TASKS 7
+#define MAX_COMMANDS 10
+#define PATH_MAX 4096
 
 typedef enum type {
   STATUS,
@@ -46,5 +47,13 @@ void executeTask(char* instructions[]);
 void redirectStdout(int pipefd[2]);
 
 void redirectStdin(int pipefd[2]);
+
+int exec_command(char* arg);
+
+int execute_task(int number_of_commands, char** commands, char* output_file);
+
+int count_commands(char* program);
+
+void split_commands(char* program, char** task_commands, int number_of_commands);
 
 #endif

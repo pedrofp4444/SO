@@ -11,10 +11,10 @@ client: bin/client
 folders:
 	@mkdir -p src include obj bin tmp
 
-bin/orchestrator: obj/orchestrator.o obj/utils.o obj/taskmanager.o obj/slaver.o
+bin/orchestrator: obj/orchestrator.o obj/utils.o obj/taskmanager.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
-bin/client: obj/client.o obj/utils.o obj/taskmanager.o obj/slaver.o
+bin/client: obj/client.o obj/utils.o obj/taskmanager.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 bin/utils: obj/utils.o
@@ -23,14 +23,11 @@ bin/utils: obj/utils.o
 bin/taskmanager: obj/taskmanager.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
-bin/slaver: obj/slaver.o
-	$(CC) $(LDFLAGS) $^ -o $@
-
 obj/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f obj/* tmp/* bin/* task_fifo
+	rm -f obj/* tmp/* bin/* task_fifo logs
 
 format:
 	clang-format -i src/*.c include/*.h

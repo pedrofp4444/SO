@@ -15,90 +15,6 @@
   server output 10 sjf
 */
 
-#define MAX_COMMANDS 10
-#define PATH_MAX 4096
-
-int exec_command(char* arg) {
-  char* exec_args[MAX_COMMANDS];
-  char* string;
-  int i = 0;
-
-  char* command = strdup(arg);
-  string = strtok(command, " ");
-
-  while (string != NULL) {
-    exec_args[i] = string;
-    string = strtok(NULL, " ");
-    i++;
-  }
-  exec_args[i] = NULL;
-
-  return execvp(exec_args[0], exec_args);
-}
-
-int execute_task(int number_of_commands, char** commands, char* output_file) {
-  int i;
-  int in_fd = 0;  // Início da pipeline: stdin
-  int out_fd;     // Descritor de arquivo para o arquivo de saída
-
-  for (i = 0; i < number_of_commands; i++) {
-    int fd[2];
-    pipe(fd);
-
-    if (fork() == 0) {
-      dup2(in_fd, STDIN_FILENO);  // Define o stdin do processo filho
-      if (i < number_of_commands - 1) {
-        dup2(fd[1], STDOUT_FILENO);  // Define o stdout do processo filho
-      } else {
-        // Para o último comando, redireciona a saída para o arquivo especificado
-        out_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (out_fd < 0) {
-          perror("open");
-          exit(EXIT_FAILURE);
-        }
-        dup2(out_fd, STDOUT_FILENO);
-        close(out_fd);
-      }
-      close(fd[0]);  // Fecha o lado de leitura do pipe não utilizado pelo filho
-
-      exec_command(commands[i]);
-      _exit(EXIT_FAILURE);  // exec_command só retorna se houver erro
-    } else {
-      wait(NULL);    // Espera o processo filho terminar
-      close(fd[1]);  // Fecha o lado de escrita do pipe no processo pai
-      in_fd = fd[0];  // O próximo comando usará a saída deste pipe como entrada
-    }
-  }
-
-  return 0;
-}
-
-// Função para contar o número de comandos baseado no delimitador '|'
-int count_commands(char* program) {
-  int count = 1;
-  const char* tmp = program;
-  while ((tmp = strchr(tmp, '|')) != NULL) {
-    count++;
-    tmp++;
-  }
-  return count;
-}
-
-// Função para dividir a string do programa em comandos individuais
-void split_commands(
-    char* program, char** task_commands, int number_of_commands
-) {
-  const char delim[2] = "|";
-  char* token;
-  token = strtok(program, delim);
-  int i = 0;
-  while (token != NULL && i < number_of_commands) {
-    task_commands[i] = token;
-    token = strtok(NULL, delim);
-    i++;
-  }
-}
-
 int main(int argc, char* argv[]) {
   if (argc < 4) {
     printf("Usage: <output_folder> <parallel-tasks> <sched-policy>\n");
@@ -157,7 +73,6 @@ int main(int argc, char* argv[]) {
     close(fd_read_server[1]);
 
     while (1) {
-      // AQUI COMEÇA O BLOCO
 
         Task task;
         int bytes_read = 0;
@@ -166,7 +81,8 @@ int main(int argc, char* argv[]) {
             enqueue(queue, task);
         }
 
-      // AQUI TERMINA O BLOCO
+        int pipe_logs[2]; // Já tenho aqui a declaração do pipe
+        pipe(pipe_logs);
 
       if (queue->size > 2) {
         int aux_tasks = 0;
@@ -180,10 +96,8 @@ int main(int argc, char* argv[]) {
 
           printf("Task: %s\n", task_aux.program);
 
-          int pipe_logs[2];
-          pipe(pipe_logs);
-
-          if (fork() == 0) {
+          if (fork() == 0) { // Este é o filho
+            close(pipe_logs[0]); // Fecha a extremidade de leitura do pipe no filho
             printf("ENTROU AQUI\n");
             char output_path[PATH_MAX];
             snprintf(
@@ -206,17 +120,42 @@ int main(int argc, char* argv[]) {
             struct timeval end_time, duration;
             gettimeofday(&end_time, NULL);
             timersub(&end_time, &task.start_time, &duration);
+            
+            // Escreve a duração no pipe
+            write(pipe_logs[1], &duration, sizeof(duration));
+            close(pipe_logs[1]); // Fecha a extremidade de escrita do pipe no filho
 
-            _exit(0);
+            _exit(task_aux.id);
           } else {
             aux_tasks++;
           }
         }
 
+        close(pipe_logs[1]); // Fecha a extremidade de escrita do pipe no pai
+
         while (aux_tasks > 0) {
-          wait(NULL);
-          aux_tasks--;
+            int status;
+            wait(&status); // Espera por um processo filho terminar
+
+            if (WIFEXITED(status)) { // Se o filho terminou normalmente
+                struct timeval duration;
+                read(pipe_logs[0], &duration, sizeof(duration)); // Lê a duração do pipe
+
+                // Abre o ficheiro de logs para escrita
+                int log_fd = open("logs", O_WRONLY | O_CREAT | O_APPEND, 0644);
+                if (log_fd != -1) {
+                    char log_message[256];
+                    int message_length = snprintf(log_message, sizeof(log_message),
+                                                  "Task ID: %d, Duration: %ld.%06ld seconds\n",
+                                                  WEXITSTATUS(status), duration.tv_sec, duration.tv_usec);
+
+                    write(log_fd, log_message, message_length); // Escreve no arquivo de logs
+                    close(log_fd); // Fecha o arquivo de logs
+                }
+            }
+            aux_tasks--;
         }
+        close(pipe_logs[0]); // Fecha a extremidade de leitura do pipe no pai
       }
     }
     close(fd_read_server[0]);

@@ -94,3 +94,87 @@ void redirectStdin(int pipefd[2]) {
     dup2(pipefd[0], STDIN_FILENO);
   }
 }
+
+#define MAX_COMMANDS 10
+#define PATH_MAX 4096
+
+int exec_command(char* arg) {
+  char* exec_args[MAX_COMMANDS];
+  char* string;
+  int i = 0;
+
+  char* command = strdup(arg);
+  string = strtok(command, " ");
+
+  while (string != NULL) {
+    exec_args[i] = string;
+    string = strtok(NULL, " ");
+    i++;
+  }
+  exec_args[i] = NULL;
+
+  return execvp(exec_args[0], exec_args);
+}
+
+int execute_task(int number_of_commands, char** commands, char* output_file) {
+  int i;
+  int in_fd = 0;  // Início da pipeline: stdin
+  int out_fd;     // Descritor de arquivo para o arquivo de saída
+
+  for (i = 0; i < number_of_commands; i++) {
+    int fd[2];
+    pipe(fd);
+
+    if (fork() == 0) {
+      dup2(in_fd, STDIN_FILENO);  // Define o stdin do processo filho
+      if (i < number_of_commands - 1) {
+        dup2(fd[1], STDOUT_FILENO);  // Define o stdout do processo filho
+      } else {
+        // Para o último comando, redireciona a saída para o arquivo especificado
+        out_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (out_fd < 0) {
+          perror("open");
+          exit(EXIT_FAILURE);
+        }
+        dup2(out_fd, STDOUT_FILENO);
+        close(out_fd);
+      }
+      close(fd[0]);  // Fecha o lado de leitura do pipe não utilizado pelo filho
+
+      exec_command(commands[i]);
+      _exit(EXIT_FAILURE);  // exec_command só retorna se houver erro
+    } else {
+      wait(NULL);    // Espera o processo filho terminar
+      close(fd[1]);  // Fecha o lado de escrita do pipe no processo pai
+      in_fd = fd[0];  // O próximo comando usará a saída deste pipe como entrada
+    }
+  }
+
+  return 0;
+}
+
+// Função para contar o número de comandos baseado no delimitador '|'
+int count_commands(char* program) {
+  int count = 1;
+  const char* tmp = program;
+  while ((tmp = strchr(tmp, '|')) != NULL) {
+    count++;
+    tmp++;
+  }
+  return count;
+}
+
+// Função para dividir a string do programa em comandos individuais
+void split_commands(
+    char* program, char** task_commands, int number_of_commands
+) {
+  const char delim[2] = "|";
+  char* token;
+  token = strtok(program, delim);
+  int i = 0;
+  while (token != NULL && i < number_of_commands) {
+    task_commands[i] = token;
+    token = strtok(NULL, delim);
+    i++;
+  }
+}

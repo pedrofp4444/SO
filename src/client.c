@@ -46,34 +46,3 @@ int main(int argc, char* argv[]) {
   close(fd_server);
   return 0;
 }
-
-/*
-
-velhos: +13 7 / 8
-novos :
-
-
- int fd_servidor, fd_cliente;
-  Task task;
-  task.duration =
-      strtol(argv[3], NULL, 10);  // Convert duration argument to integer
-  task.pid = getpid();
-  strcpy(task.program, argv[4]);
-  printf("task.id: %d\n", task.pid);
-
-  ssize_t bytes_read = 0;
-  char fifo_name[50];
-  sprintf(fifo_name, CLIENT "_%d", task.pid);
-
-  // Create client FIFO
-  createFiFO(fifo_name);
-
-  // Open server FIFO
-  fd_servidor = openFiFO(SERVER, O_WRONLY);
-
-  // Write task to server
-  writeFiFO(fd_servidor, &task, sizeof(task));
-
-  close(fd_cliente);
-  return 0;
-*/
