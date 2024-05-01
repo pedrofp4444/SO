@@ -9,3 +9,6 @@ bin
 obj
 tmp
 .vscode
+
+# Files
+logs
