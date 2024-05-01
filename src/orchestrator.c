@@ -40,6 +40,7 @@ int main(int argc, char* argv[]) {
   Queue* queue = createQueue();
   createFIFO(ORCHESTRATOR);
   int orchestrator_fifo = openFIFO(ORCHESTRATOR, O_RDONLY);
+  Status* task_status = createStatus();
 
   // Creates a pipe for the communication between the reader process and the orchestrator
   int fds_read_orchestrator[2];
@@ -62,19 +63,21 @@ int main(int argc, char* argv[]) {
         printf("Received task_%d: %s\n", task.pid, task.program);
 
         // Assigns the id to the task, making it incremental and unique
-        task.id = ids++;
 
-        // Opens the fifo created by the client, to send the task id back to the client
+        if (task.type != STATUS) {
+          // Opens the fifo created by the client, to send the task id back to the client
+          task.id = ids++;
+        }
         char fifo_name[50];
         sprintf(fifo_name, CLIENT "_%d", task.pid);
         int fd_client = open(fifo_name, O_WRONLY);
 
         // Writes the task id to the client
         write(fd_client, &task, sizeof(task));
+        // write(fd_client, &task_status, sizeof(task_status));
 
         // Closes the writing file descriptor of the client fifo
         close(fd_client);
-
         // Writes the task to the orchestrator pipe, to be read and managed by the orchestrator process
         write(fds_read_orchestrator[1], &task, sizeof(task));
       }
@@ -101,7 +104,25 @@ int main(int argc, char* argv[]) {
       // Reads the task from the reader-orchestrator pipe
       if (read(fds_read_orchestrator[0], &task, sizeof(task)) > 0) {
         // Inserts the task in the queue
-        enqueue(queue, task);
+        printf("print task.type %d\n", task.type);
+        if (task.type == STATUS) {
+          char fifo_name[50];
+          sprintf(fifo_name, CLIENT "_%d", task.pid);
+          int fd_client = open(fifo_name, O_WRONLY);
+
+          print_status(task_status);
+          write(fd_client, task_status, sizeof(Status));
+
+          // Closes the writing file descriptor of the client fifo
+          close(fd_client);
+
+        } else {
+          METRICS metrics = createMetrics(task.id);
+          enqueueStatus(task_status, metrics);
+          print_status(task_status);
+          enqueue(queue, task);
+          print_queue(queue);
+        }
       }
 
       // Creates a pipe for the communication between the orchestrator and the solvers child processes to get information for the logs
@@ -122,6 +143,11 @@ int main(int argc, char* argv[]) {
           } else {
             task_aux = dequeue(queue);
           }
+
+          changeMETRICS(task_status, task_aux.id, EXECUTING);
+          printf("--------dequeed");
+          print_status(task_status);
+          printf("--------dequeed");
 
           // Forks the process to create a solver child process to execute the task
           if (fork() == 0) {
@@ -183,6 +209,9 @@ int main(int argc, char* argv[]) {
 
           // Verifies if the child process finished normally
           if (WIFEXITED(status)) {
+            changeMETRICS(task_status, WEXITSTATUS(status), COMPLETED);
+            print_status(task_status);
+
             // Reads the duration of the task from the pipe_logs
             struct timeval duration;
             read(pipe_logs[0], &duration, sizeof(duration));

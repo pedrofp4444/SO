@@ -19,11 +19,25 @@
 // Defines the maximum path for the output file
 #define PATH_MAX 4096
 
-// Enum to indicate the type of the task
+typedef enum phase{
+EXECUTING, // 0
+SCHEDULED, // 1 
+COMPLETED, // 2
+}Phase;
+
+
 typedef enum type {
-  STATUS,
-  EXECUTE
-} Type;
+  STATUS,    // 0
+  EXECUTE,   // 1
+ } Type;
+
+typedef struct {
+  Phase type;
+  int id;
+  char program[308];
+} METRICS;
+
+// Enum to indicate the type of the task
 
 // Struct to represent a task
 typedef struct {
@@ -89,5 +103,14 @@ int count_commands(char* program);
 void split_commands(
     char* program, char** task_commands, int number_of_commands
 );
+
+
+/**
+ * Writes the task id to client
+ * 
+ * @param id The id to be written
+ * 
+*/
+void write_id(int id);
 
 #endif
