@@ -1,3 +1,5 @@
+#include "utils.h"
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,10 +9,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define MAX_COMMANDS 10
-#define PATH_MAX 4096
-
-int createFiFO(char* name) {
+int createFIFO(char* name) {
+  // Creates a FIFO with the given name
   int result = mkfifo(name, 0644);
   if (result < 0) {
     perror("Error creating FIFO");
@@ -19,7 +19,8 @@ int createFiFO(char* name) {
   return 1;
 }
 
-int openFiFO(char* name, int mode) {
+int openFIFO(char* name, int mode) {
+  // Opens a FIFO with the given name
   int result = open(name, mode);
   if (result < 0) {
     perror("Error opening FIFO");
@@ -28,150 +29,130 @@ int openFiFO(char* name, int mode) {
   return result;
 }
 
-void writeFiFO(int fd, void* data, size_t size) {
-  write(fd, data, size);
-}
+int exec_command(char* arg, int number_of_commands) {
+  // Initializes the array of arguments to be passed to execvp
+  char* exec_args[number_of_commands + 1];
 
-void readFiFO(int fd, void* data, size_t size) {
-  read(fd, data, size);
-}
-
-void closeFiFO(int fd) {
-  close(fd);
-}
-
-void parseInstructions(char* program, char* instructions[]) {
-  char* token;
-  int i = 0;
-
-  // Use a copy of the program string since strsep modifies the original string
-  char* program_copy = strdup(program);
-
-  if (program_copy == NULL) {
-    perror("Error duplicating string");
-    exit(1);
-  }
-
-  // Tokenize the program string
-  while ((token = strsep(&program_copy, " ")) != NULL) {
-    instructions[i] = token;
-    i++;
-  }
-
-  // Null-terminate the instructions array
-  instructions[i] = NULL;
-
-  // Free the duplicated string
-  free(program_copy);
-}
-
-void executeTask(char* instructions[]) {
-  execvp(instructions[0], instructions);
-  perror("execvp");
-  exit(1);
-}
-
-void redirectStdout(int pipefd[2]) {
-  if (pipe(pipefd) == -1) {
-    perror("pipe");
-    exit(1);
-  }
-
-  if (fork() == 0) {
-    close(pipefd[0]);
-    dup2(pipefd[1], STDOUT_FILENO);
-  }
-}
-
-void redirectStdin(int pipefd[2]) {
-  if (pipe(pipefd) == -1) {
-    perror("pipe");
-    exit(1);
-  }
-
-  if (fork() == 0) {
-    close(pipefd[1]);
-    dup2(pipefd[0], STDIN_FILENO);
-  }
-}
-
-#define MAX_COMMANDS 10
-#define PATH_MAX 4096
-
-int exec_command(char* arg) {
-  char* exec_args[MAX_COMMANDS];
+  // String where to split the command string into an array of arguments
   char* string;
+
+  // Index of the current argument
   int i = 0;
 
+  // Duplicates the command string to avoid modifying the original string
   char* command = strdup(arg);
   string = strtok(command, " ");
 
+  // Splits the command string into an array of arguments
   while (string != NULL) {
     exec_args[i] = string;
     string = strtok(NULL, " ");
     i++;
   }
+
+  // Sets the last element of the array to NULL
   exec_args[i] = NULL;
 
+  // Executes the command
   return execvp(exec_args[0], exec_args);
 }
 
 int execute_task(int number_of_commands, char** commands, char* output_file) {
+  // Index of the current command
   int i;
-  int in_fd = 0;  // Início da pipeline: stdin
-  int out_fd;     // Descritor de arquivo para o arquivo de saída
 
+  // Descriptor for the beginning of the pipeline
+  int in_fd = 0;
+
+  // Descriptor for the output file
+  int out_fd;
+
+  // Executes each command in the task
   for (i = 0; i < number_of_commands; i++) {
+    // Creates a pipe to stablish the communication between the processes
     int fd[2];
     pipe(fd);
 
+    // Creates the child process to execute the command
     if (fork() == 0) {
-      dup2(in_fd, STDIN_FILENO);  // Define o stdin do processo filho
+      // Redirects the stdin of the child process
+      dup2(in_fd, STDIN_FILENO);
+
+      // Redirects the stdout of the child process
       if (i < number_of_commands - 1) {
-        dup2(fd[1], STDOUT_FILENO);  // Define o stdout do processo filho
+        dup2(fd[1], STDOUT_FILENO);
       } else {
-        // Para o último comando, redireciona a saída para o arquivo especificado
+        // To the last command, redirects the output to the specified file
         out_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+        // Verifies if the file was opened successfully
         if (out_fd < 0) {
           perror("open");
           exit(EXIT_FAILURE);
         }
+
+        // Redirects the stdout to the output file
         dup2(out_fd, STDOUT_FILENO);
+
+        // Closes the output file descriptor
         close(out_fd);
       }
+
+      // Closes the file descriptors not used by the child process
       close(fd[0]);  // Fecha o lado de leitura do pipe não utilizado pelo filho
 
-      exec_command(commands[i]);
-      _exit(EXIT_FAILURE);  // exec_command só retorna se houver erro
+      // Executes the command
+      exec_command(commands[i], number_of_commands);
+
+      // Exits the child process, exec_command only returns if there is an error
+      _exit(EXIT_FAILURE);
     } else {
-      wait(NULL);    // Espera o processo filho terminar
-      close(fd[1]);  // Fecha o lado de escrita do pipe no processo pai
-      in_fd = fd[0];  // O próximo comando usará a saída deste pipe como entrada
+      // Waits for the child process to finish
+      wait(NULL);
+
+      // Closes the writing side of the pipe in the parent process
+      close(fd[1]);
+
+      // The next command will use the output of this pipe as input
+      in_fd = fd[0];
     }
   }
 
   return 0;
 }
 
-// Função para contar o número de comandos baseado no delimitador '|'
 int count_commands(char* program) {
+  // Starts the counter with 1, since there is at least one command
   int count = 1;
+
+  // Pointer to the first ocurrence of the pipe character
   const char* tmp = program;
+
+  // Counts the number of commands in the program string
   while ((tmp = strchr(tmp, '|')) != NULL) {
     count++;
     tmp++;
   }
+
   return count;
 }
 
-// Função para dividir a string do programa em comandos individuais
 void split_commands(
     char* program, char** task_commands, int number_of_commands
 ) {
+  // Delimiter used to split the program string
   const char delim[2] = "|";
+
+  // Token to store the current command
   char* token;
+
+  // Splits the program string into an array of commands
   token = strtok(program, delim);
+
+  // Index of the current command
   int i = 0;
+
+  // Stores each command in the array of commands
   while (token != NULL && i < number_of_commands) {
     task_commands[i] = token;
     token = strtok(NULL, delim);

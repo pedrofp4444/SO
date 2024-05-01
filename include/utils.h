@@ -10,17 +10,22 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+// Defines the client fifo path and name
 #define CLIENT "tmp/client_fifo"
-#define SERVER "tmp/server_fifo"
-#define MAX_TASKS 7
-#define MAX_COMMANDS 10
+
+// Defines the orchestrator fifo path and name
+#define ORCHESTRATOR "tmp/orchestrator_fifo"
+
+// Defines the maximum path for the output file
 #define PATH_MAX 4096
 
+// Enum to indicate the type of the task
 typedef enum type {
   STATUS,
   EXECUTE
 } Type;
 
+// Struct to represent a task
 typedef struct {
   Type type;
   char program[308];
@@ -30,30 +35,59 @@ typedef struct {
   struct timeval start_time;
 } Task;
 
-int createFiFO(char* name);
+/**
+ * Creates a FIFO with the given name
+ * 
+ * @param name The name of the FIFO
+ * @return 1 if the FIFO was created successfully, 0 otherwise
+ */
+int createFIFO(char* name);
 
-int openFiFO(char* name, int mode);
+/**
+ * Opens a FIFO with the given name
+ * 
+ * @param name The name of the FIFO
+ * @param mode The mode to open the FIFO
+ * @return The file descriptor of the FIFO if it was opened successfully, 0 otherwise
+ */
+int openFIFO(char* name, int mode);
 
-void writeFiFO(int fd, void* data, size_t size);
+/**
+ * Executes a command
+ * 
+ * @param arg The command to be executed
+  * @param number_of_commands The number of commands
+ * @return 0 if the command was executed successfully, -1 otherwise
+ */
+int exec_command(char* arg, int number_of_commands);
 
-void readFiFO(int fd, void* data, size_t size);
-
-void closeFiFO(int fd);
-
-void parseInstructions(char* program, char* instructions[]);
-
-void executeTask(char* instructions[]);
-
-void redirectStdout(int pipefd[2]);
-
-void redirectStdin(int pipefd[2]);
-
-int exec_command(char* arg);
-
+/**
+ * Executes a task
+ * 
+ * @param number_of_commands The number of commands in the task
+ * @param commands The commands to be executed
+ * @param output_file The output file path
+ * @return 0 if the task was executed successfully, -1 otherwise
+ */
 int execute_task(int number_of_commands, char** commands, char* output_file);
 
+/**
+ * Counts the number of commands in a program string
+ * 
+ * @param program The program string
+ * @return The number of commands in the program string
+ */
 int count_commands(char* program);
 
-void split_commands(char* program, char** task_commands, int number_of_commands);
+/**
+ * Splits the program string into an array of commands
+ * 
+ * @param program The program string
+ * @param task_commands The array of commands
+ * @param number_of_commands The number of commands in the program string
+ */
+void split_commands(
+    char* program, char** task_commands, int number_of_commands
+);
 
 #endif
