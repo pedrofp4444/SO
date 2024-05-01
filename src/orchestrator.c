@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
   char* scheduling_algorithm = argv[3];
 
   // Verifies if the output folder exists, if not, creates it
-  struct stat st = {0};
+  struct stat st = { 0 };
   if (stat(output_folder, &st) == -1) {
     mkdir(output_folder, 0700);
   }
@@ -91,7 +91,8 @@ int main(int argc, char* argv[]) {
 
     // Exits the reader process
     _exit(0);
-  } else {
+  }
+  else {
     // The main process, which is the orchestrator process, will run
 
     // Close the write end of the pipe, once the orchestrator will only read from it
@@ -106,17 +107,23 @@ int main(int argc, char* argv[]) {
         // Inserts the task in the queue
         printf("print task.type %d\n", task.type);
         if (task.type == STATUS) {
-          char fifo_name[50];
-          sprintf(fifo_name, CLIENT "_%d", task.pid);
-          int fd_client = open(fifo_name, O_WRONLY);
+          if (fork() == 0) {
+            char fifo_name[50];
+            sprintf(fifo_name, CLIENT "_%d", task.pid);
+            int fd_client = open(fifo_name, O_WRONLY);
 
-          print_status(task_status);
-          write(fd_client, task_status, sizeof(Status));
+            print_status(task_status);
+            write(fd_client, task_status, sizeof(Status));
 
-          // Closes the writing file descriptor of the client fifo
-          close(fd_client);
+            // Closes the writing file descriptor of the client fifo
+            close(fd_client);
+            _exit(0);
 
-        } else {
+          }
+
+
+        }
+        else {
           METRICS metrics = createMetrics(task.id, task.program);
           enqueueStatus(task_status, metrics);
           print_status(task_status);
@@ -140,7 +147,8 @@ int main(int argc, char* argv[]) {
           Task task_aux;
           if (strcmp(scheduling_algorithm, "sjf") == 0) {
             task_aux = dequeue_with_priority(queue);
-          } else {
+          }
+          else {
             task_aux = dequeue(queue);
           }
 
@@ -155,8 +163,8 @@ int main(int argc, char* argv[]) {
             // Creates the output path for the task output file
             char output_path[PATH_MAX];
             snprintf(
-                output_path, sizeof(output_path), "%s/task_%d.output",
-                output_folder, task_aux.id
+              output_path, sizeof(output_path), "%s/task_%d.output",
+              output_folder, task_aux.id
             );
 
             // Duplicates the program string to be able to split it into commands, not risking to modify the original string
@@ -190,7 +198,8 @@ int main(int argc, char* argv[]) {
 
             // Exits the child process, giving the task id as the exit status, so that the orchestrator can identify the task id associated with the duration given by the pipe_logs
             _exit(task_aux.id);
-          } else {
+          }
+          else {
             // The orchestrator main process increments the number of tasks being executed
             aux_tasks++;
           }
@@ -223,9 +232,9 @@ int main(int argc, char* argv[]) {
 
               // Formats the message to be written in the logs file
               int message_length = snprintf(
-                  log_message, sizeof(log_message),
-                  "Task ID: %d, Duration: %ld.%06ld seconds\n",
-                  WEXITSTATUS(status), duration.tv_sec, duration.tv_usec
+                log_message, sizeof(log_message),
+                "Task ID: %d, Duration: %ld.%06ld seconds\n",
+                WEXITSTATUS(status), duration.tv_sec, duration.tv_usec
               );
 
               // Writes the message to the logs file
