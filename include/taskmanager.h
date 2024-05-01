@@ -95,7 +95,7 @@ Status* createStatus();
  * @param id The id of the metrics
  * @return The metrics created
 */
-METRICS createMetrics(int id);
+METRICS createMetrics(int id, char* program);
 
 /**
  * Enqueues a status in the status

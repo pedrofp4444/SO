@@ -117,7 +117,7 @@ int main(int argc, char* argv[]) {
           close(fd_client);
 
         } else {
-          METRICS metrics = createMetrics(task.id);
+          METRICS metrics = createMetrics(task.id, task.program);
           enqueueStatus(task_status, metrics);
           print_status(task_status);
           enqueue(queue, task);
@@ -145,9 +145,7 @@ int main(int argc, char* argv[]) {
           }
 
           changeMETRICS(task_status, task_aux.id, EXECUTING);
-          printf("--------dequeed");
           print_status(task_status);
-          printf("--------dequeed");
 
           // Forks the process to create a solver child process to execute the task
           if (fork() == 0) {

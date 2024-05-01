@@ -121,12 +121,14 @@ Status* createStatus() {
   return status;
 }
 
-METRICS createMetrics(int id) {
+METRICS createMetrics(int id, char* program) {
   // Creates a metrics
   Type type = SCHEDULED;
   METRICS metrics;
-  metrics.type = type;
   metrics.id = id;
+
+  strcpy(metrics.program, program);
+  metrics.type = type;
 
   return metrics;
 }
@@ -173,9 +175,9 @@ void pretier_print_status(Status status) {
   write(1, COMPLETED, strlen(COMPLETED));
 
   for (int i = 0; i < status.end; i++) {
-    char task[200];
+    char task[500];
     if (status.metrics[i].type == 2) {
-      sprintf(task, "Task %d: COMPLETED\n", status.metrics[i].id);
+      sprintf(task, "Task %d -- %s\n", status.metrics[i].id, status.metrics[i].program);
       write(1, task, strlen(task));
     }
   }
@@ -184,9 +186,9 @@ void pretier_print_status(Status status) {
   write(1, EXECUTING, strlen(EXECUTING));
 
   for (int i = 0; i < status.end; i++) {
-    char task[200];
+    char task[500];
     if (status.metrics[i].type == 0) {
-      sprintf(task, "Task %d: EXECUTING\n", status.metrics[i].id);
+      sprintf(task, "Task %d -- %s\n", status.metrics[i].id, status.metrics[i].program);
       write(1, task, strlen(task));
     }
   }
@@ -195,9 +197,9 @@ void pretier_print_status(Status status) {
   write(1, SCHEDULED, strlen(SCHEDULED));
 
   for (int i = 0; i < status.end; i++) {
-    char task[200];
+    char task[500];
     if (status.metrics[i].type == 1) {
-      sprintf(task, "Task %d: SCHEDULED\n", status.metrics[i].id);
+      sprintf(task, "Task %d -- %s\n", status.metrics[i].id, status.metrics[i].program);
       write(1, task, strlen(task));
     }
   }

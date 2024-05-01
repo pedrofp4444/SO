@@ -33,9 +33,9 @@ int main(int argc, char* argv[]) {
     // Verifies if the number of arguments is correct
   } else if (argc < 5) {
     // Warns the user about the correct usage
-    printf(
-        "Usage: %s <flag [-u // -p]> <duration> <program & args>\n", argv[0]
-    );
+    char* usage = 
+    "Usage:\n $ excute <flag [-u // -p]> <duration> <program & args>\n $ status\n";
+    write(1, usage, strlen(usage));
     exit(1);
   } else {
     // If the command is execute, the task type is set to EXECUTE
