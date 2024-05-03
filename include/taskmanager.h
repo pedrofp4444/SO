@@ -126,4 +126,6 @@ void print_status(Status* status);
 */
 void pretier_print_status(Status status);
 
+void write_output_task(int id, Status status, int* pipe_logs);
+
 #endif

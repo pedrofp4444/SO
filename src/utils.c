@@ -160,10 +160,8 @@ void split_commands(
   }
 }
 
-
-void write_id(int id){
+void write_id(int id) {
   char write_tak_id[50];
   sprintf(write_tak_id, "Task received has id: %d\n", id);
   write(1, write_tak_id, strlen(write_tak_id));
-
 }

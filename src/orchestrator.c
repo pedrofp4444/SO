@@ -118,9 +118,7 @@ int main(int argc, char* argv[]) {
             // Closes the writing file descriptor of the client fifo
             close(fd_client);
             _exit(0);
-
           }
-
 
         }
         else {
@@ -142,112 +140,80 @@ int main(int argc, char* argv[]) {
         int aux_tasks = 0;
 
         // While there are tasks to be executed and the number of parallel tasks is not reached, proceed to manage the tasks and execute them
-        while (aux_tasks < parallel_tasks && !isEmpty(queue)) {
-          // Gets the task from the queue acording to the scheduling algorithm choosen
-          Task task_aux;
-          if (strcmp(scheduling_algorithm, "sjf") == 0) {
-            task_aux = dequeue_with_priority(queue);
-          }
-          else {
-            task_aux = dequeue(queue);
-          }
+        while (!isEmpty(queue)) {
+          if (aux_tasks < parallel_tasks) {
+            Task task_aux;
+            if (strcmp(scheduling_algorithm, "sjf") == 0) {
+              task_aux = dequeue_with_priority(queue);
+            }
+            else {
+              task_aux = dequeue(queue);
+            }
 
-          changeMETRICS(task_status, task_aux.id, EXECUTING);
-          print_status(task_status);
-
-          // Forks the process to create a solver child process to execute the task
-          if (fork() == 0) {
-            // Closes the reading file descriptor of the pipe_logs, once the child process will only write to it
-            close(pipe_logs[0]);
-
-            // Creates the output path for the task output file
-            char output_path[PATH_MAX];
-            snprintf(
-              output_path, sizeof(output_path), "%s/task_%d.output",
-              output_folder, task_aux.id
-            );
-
-            // Duplicates the program string to be able to split it into commands, not risking to modify the original string
-            char* program = strdup(task_aux.program);
-
-            // Counts the number of commands in the program string given
-            int number_of_commands = count_commands(program);
-
-            // Splits the program string into an array of commands
-            char* task_commands[number_of_commands];
-            split_commands(program, task_commands, number_of_commands);
-
-            // Executes the task and writes the output to the output file
-            execute_task(number_of_commands, task_commands, output_path);
-
-            // Frees the duplicated program string
-            free(program);
-
-            // Gets the end time of the task, which corresponds to the time when the child process finishes the task
-            struct timeval end_time, duration;
-            gettimeofday(&end_time, NULL);
-
-            // Calculates the total duration of the task from the arriving time(to the reader process) to the write in the output file
-            timersub(&end_time, &task.start_time, &duration);
-
-            // Writes the duration of the task to the pipe_logs to be read by the orchestrator
-            write(pipe_logs[1], &duration, sizeof(duration));
-
-            // Closes the writing file descriptor of the pipe_logs
-            close(pipe_logs[1]);
-
-            // Exits the child process, giving the task id as the exit status, so that the orchestrator can identify the task id associated with the duration given by the pipe_logs
-            _exit(task_aux.id);
-          }
-          else {
-            // The orchestrator main process increments the number of tasks being executed
-            aux_tasks++;
-          }
-        }
-
-        // Closes the writing file descriptor of the pipe_logs, once the orchestrator will only read from it
-        close(pipe_logs[1]);
-
-        // Waits for any child process to finish and writes the information to the logs file
-        while (aux_tasks > 0) {
-          // Waits for any child process to finish and gets the exit status(cointaning the task id)
-          int status;
-          wait(&status);
-
-          // Verifies if the child process finished normally
-          if (WIFEXITED(status)) {
-            changeMETRICS(task_status, WEXITSTATUS(status), COMPLETED);
+            changeMETRICS(task_status, task_aux.id, EXECUTING);
             print_status(task_status);
 
-            // Reads the duration of the task from the pipe_logs
-            struct timeval duration;
-            read(pipe_logs[0], &duration, sizeof(duration));
+            if (fork() == 0) {
+              close(pipe_logs[0]);
 
-            // Opens the logs file to write the information
-            int log_fd = open("logs", O_WRONLY | O_CREAT | O_APPEND, 0644);
-
-            // Writes the information to the logs file
-            if (log_fd != -1) {
-              char log_message[256];
-
-              // Formats the message to be written in the logs file
-              int message_length = snprintf(
-                log_message, sizeof(log_message),
-                "Task ID: %d, Duration: %ld.%06ld seconds\n",
-                WEXITSTATUS(status), duration.tv_sec, duration.tv_usec
+              char output_path[PATH_MAX];
+              snprintf(
+                output_path, sizeof(output_path), "%s/task_%d.output",
+                output_folder, task_aux.id
               );
 
-              // Writes the message to the logs file
-              write(log_fd, log_message, message_length);
+              char* program = strdup(task_aux.program);
 
-              // Closes the logs file
-              close(log_fd);
+              int number_of_commands = count_commands(program);
+
+              char* task_commands[number_of_commands];
+              split_commands(program, task_commands, number_of_commands);
+
+              execute_task(number_of_commands, task_commands, output_path);
+
+              free(program);
+
+              struct timeval end_time, duration;
+
+              gettimeofday(&end_time, NULL);
+
+              timersub(&end_time, &task.start_time, &duration);
+
+              write(pipe_logs[1], &duration, sizeof(duration));
+
+              close(pipe_logs[1]);
+
+              _exit(task_aux.id);
+
             }
+            else {
+              aux_tasks++;
+            }
+
+          }
+          else {
+            int status;
+            wait(&status);
+            if (WIFEXITED(status)) {
+              write_output_task(WEXITSTATUS(status), *task_status, pipe_logs);
+
+            }
+            // The orchestrator main process decrements the number of tasks being executed
+            aux_tasks--;
+          }
+
+
+        }
+        while (aux_tasks > 0) {
+          int status;
+          wait(&status);
+          if (WIFEXITED(status)) {
+            write_output_task(WEXITSTATUS(status), *task_status, pipe_logs);
           }
           // The orchestrator main process decrements the number of tasks being executed
+
           aux_tasks--;
         }
-
         // Closes the reading file descriptor of the pipe_logs
         close(pipe_logs[0]);
       }

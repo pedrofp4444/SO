@@ -102,8 +102,8 @@ void print_queue(Queue* queue) {
   // Iterates over the queue to print the tasks
   for (int i = queue->start; i < queue->end; i++) {
     printf(
-      "Task inside  %d: %d(mseg) %s\n", i, queue->enqueue[i].duration,
-      queue->enqueue[i].program
+        "Task inside  %d: %d(mseg) %s\n", i, queue->enqueue[i].duration,
+        queue->enqueue[i].program
     );
   }
 }
@@ -163,8 +163,8 @@ void print_status(Status* status) {
   // Iterates over the status to print the metrics
   for (int i = 0; i < status->end; i++) {
     printf(
-      "Metrics inside %d: %d %d\n", i, status->metrics[i].id,
-      status->metrics[i].type
+        "Metrics inside %d: %d %d\n", i, status->metrics[i].id,
+        status->metrics[i].type
     );
   }
 }
@@ -177,7 +177,10 @@ void pretier_print_status(Status status) {
   for (int i = 0; i < status.end; i++) {
     char task[500];
     if (status.metrics[i].type == 2) {
-      sprintf(task, "Task %d -- %s\n", status.metrics[i].id, status.metrics[i].program);
+      sprintf(
+          task, "Task %d -- %s\n", status.metrics[i].id,
+          status.metrics[i].program
+      );
       write(1, task, strlen(task));
     }
   }
@@ -188,7 +191,10 @@ void pretier_print_status(Status status) {
   for (int i = 0; i < status.end; i++) {
     char task[500];
     if (status.metrics[i].type == 0) {
-      sprintf(task, "Task %d -- %s\n", status.metrics[i].id, status.metrics[i].program);
+      sprintf(
+          task, "Task %d -- %s\n", status.metrics[i].id,
+          status.metrics[i].program
+      );
       write(1, task, strlen(task));
     }
   }
@@ -199,10 +205,38 @@ void pretier_print_status(Status status) {
   for (int i = 0; i < status.end; i++) {
     char task[500];
     if (status.metrics[i].type == 1) {
-      sprintf(task, "Task %d -- %s\n", status.metrics[i].id, status.metrics[i].program);
+      sprintf(
+          task, "Task %d -- %s\n", status.metrics[i].id,
+          status.metrics[i].program
+      );
       write(1, task, strlen(task));
     }
   }
+}
 
+void write_output_task(int id, Status status, int* pipe_logs) {
+  changeMETRICS(&status, id, COMPLETED);
+  print_status(&status);
 
+  struct timeval duration;
+  read(pipe_logs[0], &duration, sizeof(duration));
+
+  int log_fd = open("logs", O_WRONLY | O_CREAT | O_APPEND, 0644);
+
+  if (log_fd != -1) {
+    char log_message[256];
+
+    // Formats the message to be written in the logs file
+    int message_length = snprintf(
+        log_message, sizeof(log_message),
+        "Task ID: %d, Duration: %ld.%06ld seconds\n", id, duration.tv_sec,
+        duration.tv_usec
+    );
+
+    // Writes the message to the logs file
+    write(log_fd, log_message, message_length);
+
+    // Closes the logs file
+    close(log_fd);
+  }
 }

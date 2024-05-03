@@ -19,17 +19,16 @@
 // Defines the maximum path for the output file
 #define PATH_MAX 4096
 
-typedef enum phase{
-EXECUTING, // 0
-SCHEDULED, // 1 
-COMPLETED, // 2
-}Phase;
-
+typedef enum phase {
+  EXECUTING,  // 0
+  SCHEDULED,  // 1
+  COMPLETED,  // 2
+} Phase;
 
 typedef enum type {
-  STATUS,    // 0
-  EXECUTE,   // 1
- } Type;
+  STATUS,   // 0
+  EXECUTE,  // 1
+} Type;
 
 typedef struct {
   Phase type;
@@ -103,7 +102,6 @@ int count_commands(char* program);
 void split_commands(
     char* program, char** task_commands, int number_of_commands
 );
-
 
 /**
  * Writes the task id to client
