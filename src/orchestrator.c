@@ -136,6 +136,7 @@ int main(int argc, char* argv[]) {
 
       // Verifies if the queue has more than 2 tasks before executing them [THIS IS JUST DEBUG AND NEEDS TO BE REMOVED, ONLY THE IF STATEMENT]
       if (queue->size > 2) {
+        
         // Variable to keep track of the number of tasks that are being executed
         int aux_tasks = 0;
 
