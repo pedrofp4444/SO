@@ -89,7 +89,6 @@ void freeQueue(Queue* queue);
 */
 Status* createStatus();
 
-
 /**
  * Enqueues a status in the status
  * 
@@ -116,8 +115,6 @@ void updateStatus(Status* status, Task task);
 */
 Task findTask(Status* status, int id);
 
-
-
 /**
  * Prints the status of the tasks
  * 
@@ -128,8 +125,6 @@ void print_status(Status* status);
  * Prints the status of the tasks
  * 
 */
-void pretier_print_status(Status *status);
-
-
+void pretier_print_status(Status status);
 
 #endif

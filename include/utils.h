@@ -22,9 +22,9 @@
 
 typedef enum phase {
   SCHEDULED,  // 0
-  EXECUTING, // 1
+  EXECUTING,  // 1
   COMPLETED,  // 2
-  NONE // 3
+  NONE        // 3
 } Phase;
 
 typedef enum type {
@@ -103,7 +103,7 @@ int count_commands(char* program);
  * @param number_of_commands The number of commands in the program string
  */
 void split_commands(
-  char* program, char** task_commands, int number_of_commands
+    char* program, char** task_commands, int number_of_commands
 );
 
 /**

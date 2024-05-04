@@ -68,19 +68,13 @@ int main(int argc, char* argv[]) {
       int x = 1;
       while (x) {
         if (read(fd_client, &task_status, sizeof(task_status)) > 0) {
-
-          print_status(&task_status);
-
-          printf("\n"); 
-
-          pretier_print_status(&task_status);
+          pretier_print_status(task_status);
           x = 0;
         }
       }
 
     } else {
       write_id(task.id);
-      // printf("Task id: %d\n", task.id);
     }
   }
 

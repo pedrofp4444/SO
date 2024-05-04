@@ -81,7 +81,7 @@ int execute_task(int number_of_commands, char** commands, char* output_file) {
       exit(EXIT_FAILURE);
     }
 
-    if (pid == 0) { // Child process
+    if (pid == 0) {  // Child process
       // Redirect input
       dup2(in_fd, STDIN_FILENO);
       close(fd[0]);
@@ -89,8 +89,7 @@ int execute_task(int number_of_commands, char** commands, char* output_file) {
       // If it's not the last command, redirect output to the pipe
       if (i < number_of_commands - 1) {
         dup2(fd[1], STDOUT_FILENO);
-      }
-      else { // Last command, redirect output to file
+      } else {  // Last command, redirect output to file
         out_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (out_fd < 0) {
           perror("open");
@@ -106,8 +105,7 @@ int execute_task(int number_of_commands, char** commands, char* output_file) {
       // If exec_command failed
       perror("exec_command");
       exit(EXIT_FAILURE);
-    }
-    else { // Parent process
+    } else {  // Parent process
       // Close writing end of the pipe
       close(fd[1]);
       // Move to the next command
@@ -140,7 +138,7 @@ int count_commands(char* program) {
 }
 
 void split_commands(
-  char* program, char** task_commands, int number_of_commands
+    char* program, char** task_commands, int number_of_commands
 ) {
   // Delimiter used to split the program string
   const char delim[2] = "|";
@@ -167,5 +165,3 @@ void write_id(int id) {
   sprintf(write_tak_id, "Task received has id: %d\n", id);
   write(1, write_tak_id, strlen(write_tak_id));
 }
-
-
