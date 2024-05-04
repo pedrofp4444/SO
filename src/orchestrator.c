@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
             sprintf(fifo_name, CLIENT "_%d", task.pid);
             int fd_client = open(fifo_name, O_WRONLY);
 
-            print_status(task_status);
+            // print_status(task_status);
 
             write(fd_client, task_status, sizeof(Status));
 
@@ -125,14 +125,14 @@ int main(int argc, char* argv[]) {
         }
         else if (task.phase != NONE) {
           updateStatus(task_status, task);
-          print_status(task_status);
+          // print_status(task_status);
 
         }
         else {
           enqueueStatus(task_status, task);
-          print_status(task_status);
+          // print_status(task_status);
           enqueue(queue, task);
-          print_queue(queue);
+          // print_queue(queue);
         }
       }
 
@@ -148,9 +148,7 @@ int main(int argc, char* argv[]) {
         // While there are tasks to be executed and the number of parallel tasks is not reached, proceed to manage the tasks and execute them
 
         while (!isEmpty(queue)) {
-          printf("=============================================\n");
-          print_queue(queue);
-          printf("=============================================\n");
+          // print_queue(queue);
 
           if (aux_tasks < parallel_tasks) {
             Task task_aux;
@@ -160,11 +158,7 @@ int main(int argc, char* argv[]) {
             else {
               task_aux = dequeue(queue);
             }
-            printf("-..-...,.,.,.,.,.-.,.,..,.,.,.,.,,.,.,\n");
-            printf("Task ID: %d\n", task_aux.id);
-            printf("Task Program: %s\n", task_aux.program);
-            printf("Task Duration: %d\n", task_aux.duration);
-            printf("-..-...,.,.,.,.,.-.,.,..,.,.,.,.,,.,.,\n");
+
 
             // -----------------------------------------------------------------------
             int main_fifo = openFIFO(ORCHESTRATOR, O_WRONLY);
