@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
   char* scheduling_algorithm = argv[3];
 
   // Verifies if the output folder exists, if not, creates it
-  struct stat st = { 0 };
+  struct stat st = {0};
   if (stat(output_folder, &st) == -1) {
     mkdir(output_folder, 0700);
   }
@@ -91,8 +91,7 @@ int main(int argc, char* argv[]) {
 
     // Exits the reader process
     _exit(0);
-  }
-  else {
+  } else {
     // The main process, which is the orchestrator process, will run
 
     // Close the write end of the pipe, once the orchestrator will only read from it
@@ -120,8 +119,7 @@ int main(int argc, char* argv[]) {
             _exit(0);
           }
 
-        }
-        else {
+        } else {
           METRICS metrics = createMetrics(task.id, task.program);
           enqueueStatus(task_status, metrics);
           print_status(task_status);
@@ -145,8 +143,7 @@ int main(int argc, char* argv[]) {
             Task task_aux;
             if (strcmp(scheduling_algorithm, "sjf") == 0) {
               task_aux = dequeue_with_priority(queue);
-            }
-            else {
+            } else {
               task_aux = dequeue(queue);
             }
 
@@ -158,8 +155,8 @@ int main(int argc, char* argv[]) {
 
               char output_path[PATH_MAX];
               snprintf(
-                output_path, sizeof(output_path), "%s/task_%d.output",
-                output_folder, task_aux.id
+                  output_path, sizeof(output_path), "%s/task_%d.output",
+                  output_folder, task_aux.id
               );
 
               char* program = strdup(task_aux.program);
@@ -185,24 +182,19 @@ int main(int argc, char* argv[]) {
 
               _exit(task_aux.id);
 
-            }
-            else {
+            } else {
               aux_tasks++;
             }
 
-          }
-          else {
+          } else {
             int status;
             wait(&status);
             if (WIFEXITED(status)) {
               write_output_task(WEXITSTATUS(status), *task_status, pipe_logs);
-
             }
             // The orchestrator main process decrements the number of tasks being executed
             aux_tasks--;
           }
-
-
         }
         while (aux_tasks > 0) {
           int status;
