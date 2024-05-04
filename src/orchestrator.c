@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
   char* scheduling_algorithm = argv[3];
 
   // Verifies if the output folder exists, if not, creates it
-  struct stat st = {0};
+  struct stat st = { 0 };
   if (stat(output_folder, &st) == -1) {
     mkdir(output_folder, 0700);
   }
@@ -91,7 +91,8 @@ int main(int argc, char* argv[]) {
 
     // Exits the reader process
     _exit(0);
-  } else {
+  }
+  else {
     // The main process, which is the orchestrator process, will run
 
     // Close the write end of the pipe, once the orchestrator will only read from it
@@ -119,7 +120,8 @@ int main(int argc, char* argv[]) {
             _exit(0);
           }
 
-        } else {
+        }
+        else {
           METRICS metrics = createMetrics(task.id, task.program);
           enqueueStatus(task_status, metrics);
           print_status(task_status);
@@ -143,7 +145,8 @@ int main(int argc, char* argv[]) {
             Task task_aux;
             if (strcmp(scheduling_algorithm, "sjf") == 0) {
               task_aux = dequeue_with_priority(queue);
-            } else {
+            }
+            else {
               task_aux = dequeue(queue);
             }
 
@@ -155,8 +158,8 @@ int main(int argc, char* argv[]) {
 
               char output_path[PATH_MAX];
               snprintf(
-                  output_path, sizeof(output_path), "%s/task_%d.output",
-                  output_folder, task_aux.id
+                output_path, sizeof(output_path), "%s/task_%d.output",
+                output_folder, task_aux.id
               );
 
               char* program = strdup(task_aux.program);
@@ -182,15 +185,40 @@ int main(int argc, char* argv[]) {
 
               _exit(task_aux.id);
 
-            } else {
+            }
+            else {
               aux_tasks++;
             }
 
-          } else {
+          }
+          else {
             int status;
             wait(&status);
             if (WIFEXITED(status)) {
-              write_output_task(WEXITSTATUS(status), *task_status, pipe_logs);
+              changeMETRICS(task_status, WEXITSTATUS(status), COMPLETED);
+              print_status(task_status);
+
+              struct timeval duration;
+              read(pipe_logs[0], &duration, sizeof(duration));
+
+              int log_fd = open("log", O_WRONLY | O_CREAT | O_APPEND, 0644);
+
+              if (log_fd != -1) {
+                char log_message[256];
+
+                // Formats the message to be written in the logs file
+                int message_length = snprintf(
+                  log_message, sizeof(log_message),
+                  "Task ID: %d, Duration: %ld.%06ld seconds\n", WEXITSTATUS(status), duration.tv_sec,
+                  duration.tv_usec
+                );
+
+                // Writes the message to the logs file
+                write(log_fd, log_message, message_length);
+
+                // Closes the logs file
+                close(log_fd);
+              }
             }
             // The orchestrator main process decrements the number of tasks being executed
             aux_tasks--;
@@ -200,7 +228,30 @@ int main(int argc, char* argv[]) {
           int status;
           wait(&status);
           if (WIFEXITED(status)) {
-            write_output_task(WEXITSTATUS(status), *task_status, pipe_logs);
+            changeMETRICS(task_status, WEXITSTATUS(status), COMPLETED);
+            print_status(task_status);
+
+            struct timeval duration;
+            read(pipe_logs[0], &duration, sizeof(duration));
+
+            int log_fd = open("log", O_WRONLY | O_CREAT | O_APPEND, 0644);
+
+            if (log_fd != -1) {
+              char log_message[256];
+
+              // Formats the message to be written in the logs file
+              int message_length = snprintf(
+                log_message, sizeof(log_message),
+                "Task ID: %d, Duration: %ld.%06ld seconds\n", WEXITSTATUS(status), duration.tv_sec,
+                duration.tv_usec
+              );
+
+              // Writes the message to the logs file
+              write(log_fd, log_message, message_length);
+
+              // Closes the logs file
+              close(log_fd);
+            }
           }
           // The orchestrator main process decrements the number of tasks being executed
 

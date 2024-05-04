@@ -214,29 +214,3 @@ void pretier_print_status(Status status) {
   }
 }
 
-void write_output_task(int id, Status status, int* pipe_logs) {
-  changeMETRICS(&status, id, COMPLETED);
-  print_status(&status);
-
-  struct timeval duration;
-  read(pipe_logs[0], &duration, sizeof(duration));
-
-  int log_fd = open("logs", O_WRONLY | O_CREAT | O_APPEND, 0644);
-
-  if (log_fd != -1) {
-    char log_message[256];
-
-    // Formats the message to be written in the logs file
-    int message_length = snprintf(
-        log_message, sizeof(log_message),
-        "Task ID: %d, Duration: %ld.%06ld seconds\n", id, duration.tv_sec,
-        duration.tv_usec
-    );
-
-    // Writes the message to the logs file
-    write(log_fd, log_message, message_length);
-
-    // Closes the logs file
-    close(log_fd);
-  }
-}

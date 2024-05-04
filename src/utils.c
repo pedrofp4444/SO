@@ -67,55 +67,57 @@ int execute_task(int number_of_commands, char** commands, char* output_file) {
   // Descriptor for the output file
   int out_fd;
 
-  // Executes each command in the task
+  // Loop through each command
   for (i = 0; i < number_of_commands; i++) {
-    // Creates a pipe to stablish the communication between the processes
+    // Creates a pipe
     int fd[2];
     pipe(fd);
 
-    // Creates the child process to execute the command
-    if (fork() == 0) {
-      // Redirects the stdin of the child process
-      dup2(in_fd, STDIN_FILENO);
+    // Fork a child process
+    pid_t pid = fork();
 
-      // Redirects the stdout of the child process
+    if (pid == -1) {
+      perror("fork");
+      exit(EXIT_FAILURE);
+    }
+
+    if (pid == 0) { // Child process
+      // Redirect input
+      dup2(in_fd, STDIN_FILENO);
+      close(fd[0]);
+
+      // If it's not the last command, redirect output to the pipe
       if (i < number_of_commands - 1) {
         dup2(fd[1], STDOUT_FILENO);
-      } else {
-        // To the last command, redirects the output to the specified file
+      }
+      else { // Last command, redirect output to file
         out_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-
-        // Verifies if the file was opened successfully
         if (out_fd < 0) {
           perror("open");
           exit(EXIT_FAILURE);
         }
-
-        // Redirects the stdout to the output file
         dup2(out_fd, STDOUT_FILENO);
-
-        // Closes the output file descriptor
         close(out_fd);
       }
 
-      // Closes the file descriptors not used by the child process
-      close(fd[0]);  // Fecha o lado de leitura do pipe não utilizado pelo filho
-
-      // Executes the command
+      // Execute the command
       exec_command(commands[i], number_of_commands);
 
-      // Exits the child process, exec_command only returns if there is an error
-      _exit(EXIT_FAILURE);
-    } else {
-      // Waits for the child process to finish
-      wait(NULL);
-
-      // Closes the writing side of the pipe in the parent process
+      // If exec_command failed
+      perror("exec_command");
+      exit(EXIT_FAILURE);
+    }
+    else { // Parent process
+      // Close writing end of the pipe
       close(fd[1]);
-
-      // The next command will use the output of this pipe as input
+      // Move to the next command
       in_fd = fd[0];
     }
+  }
+
+  // Wait for all child processes to finish
+  for (i = 0; i < number_of_commands; i++) {
+    wait(NULL);
   }
 
   return 0;
@@ -138,7 +140,7 @@ int count_commands(char* program) {
 }
 
 void split_commands(
-    char* program, char** task_commands, int number_of_commands
+  char* program, char** task_commands, int number_of_commands
 ) {
   // Delimiter used to split the program string
   const char delim[2] = "|";
