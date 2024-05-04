@@ -26,6 +26,7 @@ int main(int argc, char* argv[]) {
   if (strcmp(argv[1], "status") == 0) {
     // If the command is status, the task type is set to STATUS
     task.type = STATUS;
+    task.phase = NONE;
 
     task.id = 0;
     task.pid = pid;
@@ -41,7 +42,7 @@ int main(int argc, char* argv[]) {
     // If the command is execute, the task type is set to EXECUTE
     task.type = EXECUTE;
     task.id = -1;
-
+    task.phase = NONE;
     // Sets the task pid, duration and program
     task.pid = pid;
     task.duration = strtol(argv[3], NULL, 10);
@@ -66,8 +67,13 @@ int main(int argc, char* argv[]) {
     if (task.type == STATUS) {
       int x = 1;
       while (x) {
-        if (read(fd_client, &task_status, sizeof(Status)) > 0) {
-          pretier_print_status(task_status);
+        if (read(fd_client, &task_status, sizeof(task_status)) > 0) {
+
+          print_status(&task_status);
+
+          printf("\n"); 
+
+          pretier_print_status(&task_status);
           x = 0;
         }
       }

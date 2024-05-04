@@ -17,7 +17,7 @@
 #define MAX_TASKS 30
 
 typedef struct {
-  METRICS metrics[MAX_TASKS];
+  Task metrics[MAX_TASKS];
   int end;
 
 } Status;
@@ -89,30 +89,34 @@ void freeQueue(Queue* queue);
 */
 Status* createStatus();
 
-/**
- * Creates a metrics of the tasks
- * 
- * @param id The id of the metrics
- * @return The metrics created
-*/
-METRICS createMetrics(int id, char* program);
 
 /**
  * Enqueues a status in the status
  * 
  * @param status The status to enqueue
- * @param metrics The metrics to enqueue
+ * @param task The metrics to enqueue
 */
-void enqueueStatus(Status* status, METRICS metrics);
+void enqueueStatus(Status* status, Task task);
 
 /**
- * Changes the metrics of the status
+ * Updates the status of the tasks
  * 
- * @param status The status to change the metrics
- * @param id The id of the metrics
- * @param type The type of the metrics
+ * @param status The status to update
+ * @param task The metrics to update
 */
-void changeMETRICS(Status* status, int id, Phase type);
+void updateStatus(Status* status, Task task);
+
+/**
+ * Finds a task in the status by its id
+ * 
+ * @param status The status to find the task
+ * @param id The id of the task
+ * 
+ * @return The task found
+*/
+Task findTask(Status* status, int id);
+
+
 
 /**
  * Prints the status of the tasks
@@ -124,7 +128,7 @@ void print_status(Status* status);
  * Prints the status of the tasks
  * 
 */
-void pretier_print_status(Status status);
+void pretier_print_status(Status *status);
 
 
 

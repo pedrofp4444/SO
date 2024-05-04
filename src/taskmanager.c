@@ -102,8 +102,8 @@ void print_queue(Queue* queue) {
   // Iterates over the queue to print the tasks
   for (int i = queue->start; i < queue->end; i++) {
     printf(
-        "Task inside  %d: %d(mseg) %s\n", i, queue->enqueue[i].duration,
-        queue->enqueue[i].program
+      "Task inside  %d: %d(mseg) %s\n", i, queue->enqueue[i].duration,
+      queue->enqueue[i].program
     );
   }
 }
@@ -121,38 +121,43 @@ Status* createStatus() {
   return status;
 }
 
-METRICS createMetrics(int id, char* program) {
-  // Creates a metrics
-  Type type = SCHEDULED;
-  METRICS metrics;
-  metrics.id = id;
 
-  strcpy(metrics.program, program);
-  metrics.type = type;
 
-  return metrics;
-}
-
-void enqueueStatus(Status* status, METRICS metrics) {
+void enqueueStatus(Status* status, Task task) {
   // Verifies if the status is full
   if (status->end == MAX_TASKS) {
     fprintf(stderr, "Status is full. Cannot enqueue more metrics.\n");
     return;
   }
-  status->metrics[status->end] = metrics;
+  task.phase = SCHEDULED;
+  status->metrics[status->end] = task;
   status->end++;
 }
 
-void changeMETRICS(Status* status, int id, Phase type) {
-  // Iterates over the status to find the metrics with the given id
+void updateStatus(Status* status, Task task) {
+  // Finds the task in the status by its id
   for (int i = 0; i < status->end; i++) {
-    if (status->metrics[i].id == id) {
-      // Changes the type of the metrics
-      status->metrics[i].type = type;
+    if (status->metrics[i].id == task.id) {
+      status->metrics[i] = task;
       return;
     }
   }
+  fprintf(stderr, "Task with id %d not found.\n", task.id);
+  exit(EXIT_FAILURE);
 }
+
+
+Task findTask(Status* status, int id) {
+  // Finds a task in the status by its id
+  for (int i = 0; i < status->end; i++) {
+    if (status->metrics[i].id == id) {
+      return status->metrics[i];
+    }
+  }
+  return status->metrics[0];
+}
+
+
 
 void print_status(Status* status) {
   // Prints the status of the tasks
@@ -163,23 +168,22 @@ void print_status(Status* status) {
   // Iterates over the status to print the metrics
   for (int i = 0; i < status->end; i++) {
     printf(
-        "Metrics inside %d: %d %d\n", i, status->metrics[i].id,
-        status->metrics[i].type
+      "task: %d,%s ,%d\n", status->metrics[i].id, status->metrics[i].program, status->metrics[i].phase
     );
   }
 }
 
-void pretier_print_status(Status status) {
+void pretier_print_status(Status *status) {
   // Prints the status of the tasks
   char COMPLETED[] = "--[ COMPLETED ]--\n";
   write(1, COMPLETED, strlen(COMPLETED));
 
-  for (int i = 0; i < status.end; i++) {
+  for (int i = 0; i < status->end; i++) {
     char task[500];
-    if (status.metrics[i].type == 2) {
+    if (status->metrics[i].type == 2) {
       sprintf(
-          task, "Task %d -- %s\n", status.metrics[i].id,
-          status.metrics[i].program
+        task, "Task %d -- %s\n", status->metrics[i].id,
+        status->metrics[i].program
       );
       write(1, task, strlen(task));
     }
@@ -188,12 +192,12 @@ void pretier_print_status(Status status) {
   char EXECUTING[] = "--[ EXECUTING ]--\n";
   write(1, EXECUTING, strlen(EXECUTING));
 
-  for (int i = 0; i < status.end; i++) {
+  for (int i = 0; i < status->end; i++) {
     char task[500];
-    if (status.metrics[i].type == 0) {
+    if (status->metrics[i].type == 0) {
       sprintf(
-          task, "Task %d -- %s\n", status.metrics[i].id,
-          status.metrics[i].program
+        task, "Task %d -- %s\n", status->metrics[i].id,
+        status->metrics[i].program
       );
       write(1, task, strlen(task));
     }
@@ -202,12 +206,12 @@ void pretier_print_status(Status status) {
   char SCHEDULED[] = "--[ SCHEDULED ]--\n";
   write(1, SCHEDULED, strlen(SCHEDULED));
 
-  for (int i = 0; i < status.end; i++) {
+  for (int i = 0; i < status->end; i++) {
     char task[500];
-    if (status.metrics[i].type == 1) {
+    if (status->metrics[i].type == 1) {
       sprintf(
-          task, "Task %d -- %s\n", status.metrics[i].id,
-          status.metrics[i].program
+        task, "Task %d -- %s\n", status->metrics[i].id,
+        status->metrics[i].program
       );
       write(1, task, strlen(task));
     }
