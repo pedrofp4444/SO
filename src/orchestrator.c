@@ -220,7 +220,7 @@ int main(int argc, char* argv[]) {
             }
             else {
               aux_tasks++;
-            printf("«««««««««««««  -- aux_tasks %d\n", aux_tasks);
+              printf("«««««««««««««  -- aux_tasks %d\n", aux_tasks);
 
             }
 
@@ -236,6 +236,10 @@ int main(int argc, char* argv[]) {
 
               Task task_aux = findTask(task_status, WEXITSTATUS(status));
               task_aux.phase = COMPLETED;
+              printf("task_aux.id %d\n", task_aux.id);
+              printf("task_aux.program %s\n", task_aux.program);
+              printf("task_aux.phase %d\n", task_aux.phase);
+
               write(main_fifo, &task_aux, sizeof(task_aux));
               close(main_fifo);
               // -----------------------------------------------------------------------
@@ -271,7 +275,7 @@ int main(int argc, char* argv[]) {
         }
         while (aux_tasks > 0) {
           int status;
-          waitpid(-1, &status, WNOHANG);
+          wait(&status);
           if (WIFEXITED(status)) {
 
             // -----------------------------------------------------------------------
@@ -280,6 +284,11 @@ int main(int argc, char* argv[]) {
 
             Task task_aux = findTask(task_status, WEXITSTATUS(status));
             task_aux.phase = COMPLETED;
+
+            printf("task_aux.id %d\n", task_aux.id);
+            printf("task_aux.program %s\n", task_aux.program);
+            printf("task_aux.phase %d\n", task_aux.phase);
+
             write(main_fifo, &task_aux, sizeof(task_aux));
             close(main_fifo);
             // -----------------------------------------------------------------------
