@@ -150,6 +150,8 @@ int main(int argc, char* argv[]) {
         while (!isEmpty(queue)) {
           printf("=============================================\n");
           print_queue(queue);
+          printf("=============================================\n");
+
           if (aux_tasks < parallel_tasks) {
             Task task_aux;
             if (strcmp(scheduling_algorithm, "sjf") == 0) {
@@ -162,6 +164,7 @@ int main(int argc, char* argv[]) {
             printf("Task ID: %d\n", task_aux.id);
             printf("Task Program: %s\n", task_aux.program);
             printf("Task Duration: %d\n", task_aux.duration);
+            printf("-..-...,.,.,.,.,.-.,.,..,.,.,.,.,,.,.,\n");
 
             // -----------------------------------------------------------------------
             int main_fifo = openFIFO(ORCHESTRATOR, O_WRONLY);
@@ -214,10 +217,6 @@ int main(int argc, char* argv[]) {
                   Task task_aux = findTask(task_status, WEXITSTATUS(status));
                   task_aux.phase = COMPLETED;
 
-                  struct timeval duration;
-                  read(pipe_logs[0], &duration, sizeof(duration));
-                  task_aux.start_time = duration;
-
                   write(main_fifo, &task_aux, sizeof(task_aux));
                   close(main_fifo);
                   // -----------------------------------------------------------------------
@@ -226,6 +225,9 @@ int main(int argc, char* argv[]) {
 
                   if (log_fd != -1) {
                     char log_message[256];
+
+                    struct timeval duration;
+                    read(pipe_logs[0], &duration, sizeof(duration));
 
                     // Formats the message to be written in the lprint_queue(queue);ogs file
                     int message_length = snprintf(
@@ -239,16 +241,17 @@ int main(int argc, char* argv[]) {
 
                     // Closes the logs file
                     close(log_fd);
-                    aux_tasks--;
                   }
                 }
+                aux_tasks--;
+                _exit(0);
               }
               // The orchestrator main process decrements the number of tasks being executed
 
-              // _exit(0);
+              _exit(0);
             }
           }
-          
+
         }
       }
 
