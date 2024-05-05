@@ -130,7 +130,7 @@ int main(int argc, char* argv[]) {
             aux_tasks++;
           }
           updateStatus(task_status, task);
-          print_status(task_status);
+          // print_status(task_status);
 
         } else {
           enqueueStatus(task_status, task);
@@ -139,11 +139,6 @@ int main(int argc, char* argv[]) {
           // print_queue(queue);
         }
       }
-
-      // Creates a pipe for the communication between the orchestrator and the solvers child processes to get information for the logs
-      // int pipe_logs[2];
-      // pipe(pipe_logs);
-
       // Verifies if the queue has more than 2 tasks before executing them [THIS IS JUST DEBUG AND NEEDS TO BE REMOVED, ONLY THE IF STATEMENT]
       if (queue->size > 2) {
         // Variable to keep track of the number of tasks that are being executed
@@ -171,7 +166,6 @@ int main(int argc, char* argv[]) {
 
             if (fork() == 0) {
               if (fork() == 0) {
-                // close(pipe_logs[0]);
 
                 char output_path[PATH_MAX];
                 snprintf(
@@ -190,16 +184,6 @@ int main(int argc, char* argv[]) {
 
                 free(program);
 
-                // struct timeval end_time, duration;
-
-                // gettimeofday(&end_time, NULL);
-
-                // timersub(&end_time, &task.start_time, &duration);
-
-                // write(pipe_logs[1], &duration, sizeof(duration));
-
-                // close(pipe_logs[1]);
-
                 _exit(task_aux.id);
               } else {
                 int status;
@@ -212,16 +196,15 @@ int main(int argc, char* argv[]) {
                       findTask(task_status, WEXITSTATUS(status));
                   task_finished.phase = COMPLETED;
 
+                  write(main_fifo, &task_finished, sizeof(task_aux));
+                  close(main_fifo);
+
                   struct timeval end_time, duration;
 
                   gettimeofday(&end_time, NULL);
 
                   timersub(&end_time, &task_finished.start_time, &duration);
 
-                  // task_finished.start_time = duration;
-
-                  write(main_fifo, &task_finished, sizeof(task_aux));
-                  close(main_fifo);
                   // -----------------------------------------------------------------------
 
                   int log_fd = open("log", O_WRONLY | O_CREAT | O_APPEND, 0644);
