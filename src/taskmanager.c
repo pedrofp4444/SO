@@ -84,7 +84,7 @@ Task dequeue_with_priority(Queue* queue) {
   }
   // Reset the task's duration to -1 before returning
   // queue->enqueue[index].duration = -1;
-  for(int i = index; i < queue->end; i++) {
+  for (int i = index; i < queue->end; i++) {
     queue->enqueue[i] = queue->enqueue[i + 1];
   }
   queue->end--;
@@ -102,8 +102,8 @@ void print_queue(Queue* queue) {
   // Iterates over the queue to print the tasks
   for (int i = queue->start; i < queue->end; i++) {
     printf(
-      "Task inside  %d: %d(mseg) %s\n", i, queue->enqueue[i].duration,
-      queue->enqueue[i].program
+        "Task inside  %d: %d(mseg) %s\n", i, queue->enqueue[i].duration,
+        queue->enqueue[i].program
     );
   }
 }
@@ -164,13 +164,12 @@ void print_status(Status* status) {
   // Iterates over the status to print the metrics
   for (int i = 0; i < status->end; i++) {
     printf(
-      "task: %d,%s ,%d\n", status->metrics[i].id, status->metrics[i].program,
-      status->metrics[i].phase
+        "task: %d,%s ,%d\n", status->metrics[i].id, status->metrics[i].program,
+        status->metrics[i].phase
     );
   }
 
   printf("--------------------------------------------\n");
-
 }
 
 void pretier_print_status(Status status) {
@@ -182,8 +181,8 @@ void pretier_print_status(Status status) {
     char task[500];
     if (status.metrics[i].phase == 2) {
       sprintf(
-        task, "Task %d -- %s\n", status.metrics[i].id,
-        status.metrics[i].program
+          task, "Task %d -- %s\n", status.metrics[i].id,
+          status.metrics[i].program
       );
       write(1, task, strlen(task));
     }
@@ -196,8 +195,8 @@ void pretier_print_status(Status status) {
     char task[500];
     if (status.metrics[i].phase == 1) {
       sprintf(
-        task, "Task %d -- %s\n", status.metrics[i].id,
-        status.metrics[i].program
+          task, "Task %d -- %s\n", status.metrics[i].id,
+          status.metrics[i].program
       );
       write(1, task, strlen(task));
     }
@@ -210,8 +209,8 @@ void pretier_print_status(Status status) {
     char task[500];
     if (status.metrics[i].phase == 0) {
       sprintf(
-        task, "Task %d -- %s\n", status.metrics[i].id,
-        status.metrics[i].program
+          task, "Task %d -- %s\n", status.metrics[i].id,
+          status.metrics[i].program
       );
       write(1, task, strlen(task));
     }
