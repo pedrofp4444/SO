@@ -14,7 +14,8 @@
 int main(int argc, char* argv[]) {
   // Verifies if the number of arguments is correct
   if (argc < 4) {
-    printf("Usage: <output_folder> <parallel-tasks> <sched-policy>\n");
+    char* usage = "Usage: <output_folder> <parallel-tasks> <sched-policy>\n";
+    write(1, usage, strlen(usage));
     return 1;
   }
 
@@ -25,21 +26,22 @@ int main(int argc, char* argv[]) {
   char* scheduling_algorithm = argv[3];
 
   // Verifies if the output folder exists, if not, creates it
-  struct stat st = {0};
+  struct stat st = { 0 };
   if (stat(output_folder, &st) == -1) {
     mkdir(output_folder, 0700);
   }
 
   // Prints the configuration
-  printf("=== (Orchestrator started) ===\n");
-  printf("[USING] output_folder: %s\n", output_folder);
-  printf("[USING] parallel_tasks: %d\n", parallel_tasks);
-  printf("[USING] scheduling_algorithm: %s\n", scheduling_algorithm);
+  // printf("=== (Orchestrator started) ===\n");
+  // printf("[USING] output_folder: %s\n", output_folder);
+  // printf("[USING] parallel_tasks: %d\n", parallel_tasks);
+  // printf("[USING] scheduling_algorithm: %s\n", scheduling_algorithm);
 
   // Inicializes the queue and the fifo for the comunications between the orchestrator and the clients
   Queue* queue = createQueue();
   createFIFO(ORCHESTRATOR);
   int orchestrator_fifo = openFIFO(ORCHESTRATOR, O_RDONLY);
+  Status* task_status = createStatus();
 
   // Creates a pipe for the communication between the reader process and the orchestrator
   int fds_read_orchestrator[2];
@@ -55,25 +57,27 @@ int main(int argc, char* argv[]) {
 
       // Reads the task from the orchestrator fifo, receiving the tasks from the clients
       if (read(orchestrator_fifo, &task, sizeof(task)) > 0) {
-        // Gets the start time of the task, which corresponds to the time when the reader process receives the task
-        gettimeofday(&task.start_time, NULL);
+        if (task.phase == NONE) {
+          // Gets the start time of the task, which corresponds to the time when the reader process receives the task
+          gettimeofday(&task.start_time, NULL);
 
-        // Prints the task received
-        printf("Received task_%d: %s\n", task.pid, task.program);
+          // Assigns the id to the task, making it incremental and unique
 
-        // Assigns the id to the task, making it incremental and unique
-        task.id = ids++;
+          if (task.type != STATUS) {
+            // Opens the fifo created by the client, to send the task id back to the client
+            task.id = ids++;
+          }
+          char fifo_name[50];
+          sprintf(fifo_name, CLIENT "_%d", task.pid);
+          int fd_client = open(fifo_name, O_WRONLY);
 
-        // Opens the fifo created by the client, to send the task id back to the client
-        char fifo_name[50];
-        sprintf(fifo_name, CLIENT "_%d", task.pid);
-        int fd_client = open(fifo_name, O_WRONLY);
+          // Writes the task id to the client
+          write(fd_client, &task, sizeof(task));
+          // write(fd_client, &task_status, sizeof(task_status));
 
-        // Writes the task id to the client
-        write(fd_client, &task, sizeof(task));
-
-        // Closes the writing file descriptor of the client fifo
-        close(fd_client);
+          // Closes the writing file descriptor of the client fifo
+          close(fd_client);
+        }
 
         // Writes the task to the orchestrator pipe, to be read and managed by the orchestrator process
         write(fds_read_orchestrator[1], &task, sizeof(task));
@@ -88,7 +92,8 @@ int main(int argc, char* argv[]) {
 
     // Exits the reader process
     _exit(0);
-  } else {
+  }
+  else {
     // The main process, which is the orchestrator process, will run
 
     // Close the write end of the pipe, once the orchestrator will only read from it
@@ -101,7 +106,34 @@ int main(int argc, char* argv[]) {
       // Reads the task from the reader-orchestrator pipe
       if (read(fds_read_orchestrator[0], &task, sizeof(task)) > 0) {
         // Inserts the task in the queue
-        enqueue(queue, task);
+
+        if (task.type == STATUS) {
+          if (fork() == 0) {
+            char fifo_name[50];
+            sprintf(fifo_name, CLIENT "_%d", task.pid);
+            int fd_client = open(fifo_name, O_WRONLY);
+
+            // print_status(task_status);
+
+            write(fd_client, task_status, sizeof(Status));
+
+            // Closes the writing file descriptor of the client fifo
+            close(fd_client);
+            _exit(0);
+          }
+
+        }
+        else if (task.phase != NONE) {
+          updateStatus(task_status, task);
+          // print_status(task_status);
+
+        }
+        else {
+          enqueueStatus(task_status, task);
+          // print_status(task_status);
+          enqueue(queue, task);
+          // print_queue(queue);
+        }
       }
 
       // Creates a pipe for the communication between the orchestrator and the solvers child processes to get information for the logs
@@ -109,123 +141,123 @@ int main(int argc, char* argv[]) {
       pipe(pipe_logs);
 
       // Verifies if the queue has more than 2 tasks before executing them [THIS IS JUST DEBUG AND NEEDS TO BE REMOVED, ONLY THE IF STATEMENT]
-      if (queue->size > 2) {
+      if (queue->size > 0) {
         // Variable to keep track of the number of tasks that are being executed
         int aux_tasks = 0;
 
         // While there are tasks to be executed and the number of parallel tasks is not reached, proceed to manage the tasks and execute them
-        while (aux_tasks < parallel_tasks && !isEmpty(queue)) {
-          // Gets the task from the queue acording to the scheduling algorithm choosen
-          Task task_aux;
-          if (strcmp(scheduling_algorithm, "sjf") == 0) {
-            task_aux = dequeue_with_priority(queue);
-          } else {
-            task_aux = dequeue(queue);
-          }
 
-          // Forks the process to create a solver child process to execute the task
-          if (fork() == 0) {
-            // Closes the reading file descriptor of the pipe_logs, once the child process will only write to it
-            close(pipe_logs[0]);
+        while (!isEmpty(queue)) {
+          // print_queue(queue);
 
-            // Creates the output path for the task output file
-            char output_path[PATH_MAX];
-            snprintf(
-                output_path, sizeof(output_path), "%s/task_%d.output",
-                output_folder, task_aux.id
-            );
+          if (aux_tasks < parallel_tasks) {
+            Task task_aux;
+            if (strcmp(scheduling_algorithm, "sjf") == 0) {
+              task_aux = dequeue_with_priority(queue);
+            }
+            else {
+              task_aux = dequeue(queue);
+            }
 
-            // Duplicates the program string to be able to split it into commands, not risking to modify the original string
-            char* program = strdup(task_aux.program);
 
-            // Counts the number of commands in the program string given
-            int number_of_commands = count_commands(program);
+            // -----------------------------------------------------------------------
+            int main_fifo = openFIFO(ORCHESTRATOR, O_WRONLY);
+            task_aux.phase = EXECUTING;
+            write(main_fifo, &task_aux, sizeof(task_aux));
+            close(main_fifo);
+            // -----------------------------------------------------------------------
 
-            // Splits the program string into an array of commands
-            char* task_commands[number_of_commands];
-            split_commands(program, task_commands, number_of_commands);
-
-            // Executes the task and writes the output to the output file
-            execute_task(number_of_commands, task_commands, output_path);
-
-            // Frees the duplicated program string
-            free(program);
-
-            // Gets the end time of the task, which corresponds to the time when the child process finishes the task
-            struct timeval end_time, duration;
-            gettimeofday(&end_time, NULL);
-
-            // Calculates the total duration of the task from the arriving time(to the reader process) to the write in the output file
-            timersub(&end_time, &task.start_time, &duration);
-
-            // Writes the duration of the task to the pipe_logs to be read by the orchestrator
-            write(pipe_logs[1], &duration, sizeof(duration));
-
-            // Closes the writing file descriptor of the pipe_logs
-            close(pipe_logs[1]);
-
-            // Exits the child process, giving the task id as the exit status, so that the orchestrator can identify the task id associated with the duration given by the pipe_logs
-            _exit(task_aux.id);
-          } else {
-            // The orchestrator main process increments the number of tasks being executed
             aux_tasks++;
-          }
-        }
+            if (fork() == 0) {
+              if (fork() == 0) {
+                close(pipe_logs[0]);
 
-        // Closes the writing file descriptor of the pipe_logs, once the orchestrator will only read from it
-        close(pipe_logs[1]);
+                char output_path[PATH_MAX];
+                snprintf(
+                  output_path, sizeof(output_path), "%s/task_%d.output",
+                  output_folder, task_aux.id
+                );
 
-        // Waits for any child process to finish and writes the information to the logs file
-        while (aux_tasks > 0) {
-          // Waits for any child process to finish and gets the exit status(cointaning the task id)
-          int status;
-          wait(&status);
+                char* program = strdup(task_aux.program);
 
-          // Verifies if the child process finished normally
-          if (WIFEXITED(status)) {
-            // Reads the duration of the task from the pipe_logs
-            struct timeval duration;
-            read(pipe_logs[0], &duration, sizeof(duration));
+                int number_of_commands = count_commands(program);
 
-            // Opens the logs file to write the information
-            int log_fd = open("logs", O_WRONLY | O_CREAT | O_APPEND, 0644);
+                char* task_commands[number_of_commands];
+                split_commands(program, task_commands, number_of_commands);
 
-            // Writes the information to the logs file
-            if (log_fd != -1) {
-              char log_message[256];
+                execute_task(number_of_commands, task_commands, output_path);
 
-              // Formats the message to be written in the logs file
-              int message_length = snprintf(
-                  log_message, sizeof(log_message),
-                  "Task ID: %d, Duration: %ld.%06ld seconds\n",
-                  WEXITSTATUS(status), duration.tv_sec, duration.tv_usec
-              );
+                free(program);
 
-              // Writes the message to the logs file
-              write(log_fd, log_message, message_length);
+                struct timeval end_time, duration;
 
-              // Closes the logs file
-              close(log_fd);
+                gettimeofday(&end_time, NULL);
+
+                timersub(&end_time, &task.start_time, &duration);
+
+                write(pipe_logs[1], &duration, sizeof(duration));
+
+                close(pipe_logs[1]);
+
+                _exit(task_aux.id);
+              }
+              else {
+                int status;
+                wait(&status);
+                if (WIFEXITED(status)) {
+                  // -----------------------------------------------------------------------
+                  int main_fifo = openFIFO(ORCHESTRATOR, O_WRONLY);
+
+                  Task task_aux = findTask(task_status, WEXITSTATUS(status));
+                  task_aux.phase = COMPLETED;
+
+                  write(main_fifo, &task_aux, sizeof(task_aux));
+                  close(main_fifo);
+                  // -----------------------------------------------------------------------
+
+                  int log_fd = open("log", O_WRONLY | O_CREAT | O_APPEND, 0644);
+
+                  if (log_fd != -1) {
+                    char log_message[256];
+
+                    struct timeval duration;
+                    read(pipe_logs[0], &duration, sizeof(duration));
+
+                    // Formats the message to be written in the lprint_queue(queue);ogs file
+                    int message_length = snprintf(
+                      log_message, sizeof(log_message),
+                      "Task ID: %d, Duration: %ld.%06ld seconds\n",
+                      WEXITSTATUS(status), duration.tv_sec, duration.tv_usec
+                    );
+
+                    // Writes the message to the logs file
+                    write(log_fd, log_message, message_length);
+
+                    // Closes the logs file
+                    close(log_fd);
+                  }
+                }
+                aux_tasks--;
+                _exit(0);
+              }
+              // The orchestrator main process decrements the number of tasks being executed
+
+              _exit(0);
             }
           }
-          // The orchestrator main process decrements the number of tasks being executed
-          aux_tasks--;
+
         }
-
-        // Closes the reading file descriptor of the pipe_logs
-        close(pipe_logs[0]);
       }
+
+      // Closes the reading file descriptor of the reader-orchestrator pipe
     }
-
-    // Closes the reading file descriptor of the reader-orchestrator pipe
     close(fds_read_orchestrator[0]);
+
+    // Closes the orchestrator fifo
+    close(orchestrator_fifo);
+
+    // Frees the queue
+    freeQueue(queue);
   }
-
-  // Closes the orchestrator fifo
-  close(orchestrator_fifo);
-
-  // Frees the queue
-  freeQueue(queue);
-
   return 0;
 }

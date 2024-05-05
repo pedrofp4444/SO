@@ -82,12 +82,12 @@ Task dequeue_with_priority(Queue* queue) {
       queue->enqueue[i].duration -= 10;
     }
   }
-
-  // Removes the task from the queue by shifting the tasks to the left
-  for (int i = index; i < queue->end - 1; i++) {
+  // Reset the task's duration to -1 before returning
+  // queue->enqueue[index].duration = -1;
+  for(int i = index; i < queue->end; i++) {
     queue->enqueue[i] = queue->enqueue[i + 1];
   }
-  queue->enqueue[queue->end - 1].duration = -1;
+  queue->end--;
 
   return minTask;
 }
@@ -102,8 +102,8 @@ void print_queue(Queue* queue) {
   // Iterates over the queue to print the tasks
   for (int i = queue->start; i < queue->end; i++) {
     printf(
-        "Task inside  %d: %d(mseg) %s\n", i, queue->enqueue[i].duration,
-        queue->enqueue[i].program
+      "Task inside  %d: %d(mseg) %s\n", i, queue->enqueue[i].duration,
+      queue->enqueue[i].program
     );
   }
 }
@@ -111,4 +111,109 @@ void print_queue(Queue* queue) {
 void freeQueue(Queue* queue) {
   // Frees the queue
   free(queue);
+}
+
+Status* createStatus() {
+  // Allocates memory for the status
+  Status* status = malloc(sizeof(Status));
+  status->end = 0;
+
+  return status;
+}
+
+void enqueueStatus(Status* status, Task task) {
+  // Verifies if the status is full
+  if (status->end == MAX_TASKS) {
+    fprintf(stderr, "Status is full. Cannot enqueue more metrics.\n");
+    return;
+  }
+  task.phase = SCHEDULED;
+  status->metrics[status->end] = task;
+  status->end++;
+}
+
+void updateStatus(Status* status, Task task) {
+  // Finds the task in the status by its id
+  for (int i = 0; i < status->end; i++) {
+    if (status->metrics[i].id == task.id) {
+      status->metrics[i] = task;
+      return;
+    }
+  }
+  fprintf(stderr, "Task with id %d not found.\n", task.id);
+  exit(EXIT_FAILURE);
+}
+
+Task findTask(Status* status, int id) {
+  // Finds a task in the status by its id
+  for (int i = 0; i < status->end; i++) {
+    if (status->metrics[i].id == id) {
+      return status->metrics[i];
+    }
+  }
+  return status->metrics[0];
+}
+
+void print_status(Status* status) {
+  // Prints the status of the tasks
+  printf("--------------------------------------------\n");
+  printf("Status: \n");
+
+  printf("Status end: %d\n", status->end);
+
+  // Iterates over the status to print the metrics
+  for (int i = 0; i < status->end; i++) {
+    printf(
+      "task: %d,%s ,%d\n", status->metrics[i].id, status->metrics[i].program,
+      status->metrics[i].phase
+    );
+  }
+
+  printf("--------------------------------------------\n");
+
+}
+
+void pretier_print_status(Status status) {
+  // Prints the status of the tasks
+  char COMPLETED[] = "--[ COMPLETED ]--\n";
+  write(1, COMPLETED, strlen(COMPLETED));
+
+  for (int i = 0; i < status.end; i++) {
+    char task[500];
+    if (status.metrics[i].phase == 2) {
+      sprintf(
+        task, "Task %d -- %s\n", status.metrics[i].id,
+        status.metrics[i].program
+      );
+      write(1, task, strlen(task));
+    }
+  }
+
+  char EXECUTING[] = "--[ EXECUTING ]--\n";
+  write(1, EXECUTING, strlen(EXECUTING));
+
+  for (int i = 0; i < status.end; i++) {
+    char task[500];
+    if (status.metrics[i].phase == 1) {
+      sprintf(
+        task, "Task %d -- %s\n", status.metrics[i].id,
+        status.metrics[i].program
+      );
+      write(1, task, strlen(task));
+    }
+  }
+
+  char SCHEDULED[] = "--[ SCHEDULED ]--\n";
+  write(1, SCHEDULED, strlen(SCHEDULED));
+
+  for (int i = 0; i < status.end; i++) {
+    char task[500];
+    if (status.metrics[i].phase == 0) {
+      sprintf(
+        task, "Task %d -- %s\n", status.metrics[i].id,
+        status.metrics[i].program
+      );
+      write(1, task, strlen(task));
+    }
+  }
 }

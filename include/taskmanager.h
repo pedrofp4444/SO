@@ -16,6 +16,12 @@
 // Defines the maximum number of tasks to be in the queue
 #define MAX_TASKS 30
 
+typedef struct {
+  Task metrics[MAX_TASKS];
+  int end;
+
+} Status;
+
 // Struct to represent a queue of tasks
 typedef struct {
   Task enqueue[MAX_TASKS];
@@ -75,5 +81,50 @@ void print_queue(Queue* queue);
  * @param queue The queue to be freed
  */
 void freeQueue(Queue* queue);
+
+/**
+ * Creates a status of the tasks
+ * 
+ * @return The status created
+*/
+Status* createStatus();
+
+/**
+ * Enqueues a status in the status
+ * 
+ * @param status The status to enqueue
+ * @param task The metrics to enqueue
+*/
+void enqueueStatus(Status* status, Task task);
+
+/**
+ * Updates the status of the tasks
+ * 
+ * @param status The status to update
+ * @param task The metrics to update
+*/
+void updateStatus(Status* status, Task task);
+
+/**
+ * Finds a task in the status by its id
+ * 
+ * @param status The status to find the task
+ * @param id The id of the task
+ * 
+ * @return The task found
+*/
+Task findTask(Status* status, int id);
+
+/**
+ * Prints the status of the tasks
+ * 
+*/
+void print_status(Status* status);
+
+/**
+ * Prints the status of the tasks
+ * 
+*/
+void pretier_print_status(Status status);
 
 #endif
