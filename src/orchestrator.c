@@ -25,6 +25,8 @@ int main(int argc, char* argv[]) {
   int parallel_tasks = strtol(argv[2], NULL, 10);
   char* scheduling_algorithm = argv[3];
 
+  int aux_tasks = 0;
+
   // Verifies if the output folder exists, if not, creates it
   struct stat st = { 0 };
   if (stat(output_folder, &st) == -1) {
@@ -124,8 +126,14 @@ int main(int argc, char* argv[]) {
 
         }
         else if (task.phase != NONE) {
+          if (task.phase == COMPLETED) {
+            aux_tasks--;
+          }
+          else if (task.phase == EXECUTING) {
+            aux_tasks++;
+          }
           updateStatus(task_status, task);
-          // print_status(task_status);
+          print_status(task_status);
 
         }
         else {
@@ -137,19 +145,20 @@ int main(int argc, char* argv[]) {
       }
 
       // Creates a pipe for the communication between the orchestrator and the solvers child processes to get information for the logs
-      int pipe_logs[2];
-      pipe(pipe_logs);
+      // int pipe_logs[2];
+      // pipe(pipe_logs);
 
       // Verifies if the queue has more than 2 tasks before executing them [THIS IS JUST DEBUG AND NEEDS TO BE REMOVED, ONLY THE IF STATEMENT]
-      if (queue->size > 0) {
+      if (queue->size > 2) {
         // Variable to keep track of the number of tasks that are being executed
-        int aux_tasks = 0;
 
         // While there are tasks to be executed and the number of parallel tasks is not reached, proceed to manage the tasks and execute them
 
-        while (!isEmpty(queue)) {
+        if (!isEmpty(queue)) {
+
           // print_queue(queue);
 
+          printf("aux_tasks: %d\n", aux_tasks);
           if (aux_tasks < parallel_tasks) {
             Task task_aux;
             if (strcmp(scheduling_algorithm, "sjf") == 0) {
@@ -167,10 +176,10 @@ int main(int argc, char* argv[]) {
             close(main_fifo);
             // -----------------------------------------------------------------------
 
-            aux_tasks++;
+
             if (fork() == 0) {
               if (fork() == 0) {
-                close(pipe_logs[0]);
+                // close(pipe_logs[0]);
 
                 char output_path[PATH_MAX];
                 snprintf(
@@ -189,15 +198,15 @@ int main(int argc, char* argv[]) {
 
                 free(program);
 
-                struct timeval end_time, duration;
+                // struct timeval end_time, duration;
 
-                gettimeofday(&end_time, NULL);
+                // gettimeofday(&end_time, NULL);
 
-                timersub(&end_time, &task.start_time, &duration);
+                // timersub(&end_time, &task.start_time, &duration);
 
-                write(pipe_logs[1], &duration, sizeof(duration));
+                // write(pipe_logs[1], &duration, sizeof(duration));
 
-                close(pipe_logs[1]);
+                // close(pipe_logs[1]);
 
                 _exit(task_aux.id);
               }
@@ -205,13 +214,23 @@ int main(int argc, char* argv[]) {
                 int status;
                 wait(&status);
                 if (WIFEXITED(status)) {
+
                   // -----------------------------------------------------------------------
                   int main_fifo = openFIFO(ORCHESTRATOR, O_WRONLY);
 
-                  Task task_aux = findTask(task_status, WEXITSTATUS(status));
-                  task_aux.phase = COMPLETED;
+                  Task task_finished = findTask(task_status, WEXITSTATUS(status));
+                  task_finished.phase = COMPLETED;
 
-                  write(main_fifo, &task_aux, sizeof(task_aux));
+                  struct timeval end_time, duration;
+
+                  gettimeofday(&end_time, NULL);
+
+                  timersub(&end_time, &task_finished.start_time, &duration);
+
+                  // task_finished.start_time = duration;
+
+
+                  write(main_fifo, &task_finished, sizeof(task_aux));
                   close(main_fifo);
                   // -----------------------------------------------------------------------
 
@@ -219,9 +238,6 @@ int main(int argc, char* argv[]) {
 
                   if (log_fd != -1) {
                     char log_message[256];
-
-                    struct timeval duration;
-                    read(pipe_logs[0], &duration, sizeof(duration));
 
                     // Formats the message to be written in the lprint_queue(queue);ogs file
                     int message_length = snprintf(
@@ -237,13 +253,14 @@ int main(int argc, char* argv[]) {
                     close(log_fd);
                   }
                 }
-                aux_tasks--;
+
                 _exit(0);
               }
               // The orchestrator main process decrements the number of tasks being executed
 
               _exit(0);
             }
+
           }
 
         }
