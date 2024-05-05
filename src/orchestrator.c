@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
   int aux_tasks = 0;
 
   // Verifies if the output folder exists, if not, creates it
-  struct stat st = { 0 };
+  struct stat st = {0};
   if (stat(output_folder, &st) == -1) {
     mkdir(output_folder, 0700);
   }
@@ -94,8 +94,7 @@ int main(int argc, char* argv[]) {
 
     // Exits the reader process
     _exit(0);
-  }
-  else {
+  } else {
     // The main process, which is the orchestrator process, will run
 
     // Close the write end of the pipe, once the orchestrator will only read from it
@@ -124,19 +123,16 @@ int main(int argc, char* argv[]) {
             _exit(0);
           }
 
-        }
-        else if (task.phase != NONE) {
+        } else if (task.phase != NONE) {
           if (task.phase == COMPLETED) {
             aux_tasks--;
-          }
-          else if (task.phase == EXECUTING) {
+          } else if (task.phase == EXECUTING) {
             aux_tasks++;
           }
           updateStatus(task_status, task);
           print_status(task_status);
 
-        }
-        else {
+        } else {
           enqueueStatus(task_status, task);
           // print_status(task_status);
           enqueue(queue, task);
@@ -155,7 +151,6 @@ int main(int argc, char* argv[]) {
         // While there are tasks to be executed and the number of parallel tasks is not reached, proceed to manage the tasks and execute them
 
         if (!isEmpty(queue)) {
-
           // print_queue(queue);
 
           printf("aux_tasks: %d\n", aux_tasks);
@@ -163,11 +158,9 @@ int main(int argc, char* argv[]) {
             Task task_aux;
             if (strcmp(scheduling_algorithm, "sjf") == 0) {
               task_aux = dequeue_with_priority(queue);
-            }
-            else {
+            } else {
               task_aux = dequeue(queue);
             }
-
 
             // -----------------------------------------------------------------------
             int main_fifo = openFIFO(ORCHESTRATOR, O_WRONLY);
@@ -176,15 +169,14 @@ int main(int argc, char* argv[]) {
             close(main_fifo);
             // -----------------------------------------------------------------------
 
-
             if (fork() == 0) {
               if (fork() == 0) {
                 // close(pipe_logs[0]);
 
                 char output_path[PATH_MAX];
                 snprintf(
-                  output_path, sizeof(output_path), "%s/task_%d.output",
-                  output_folder, task_aux.id
+                    output_path, sizeof(output_path), "%s/task_%d.output",
+                    output_folder, task_aux.id
                 );
 
                 char* program = strdup(task_aux.program);
@@ -209,16 +201,15 @@ int main(int argc, char* argv[]) {
                 // close(pipe_logs[1]);
 
                 _exit(task_aux.id);
-              }
-              else {
+              } else {
                 int status;
                 wait(&status);
                 if (WIFEXITED(status)) {
-
                   // -----------------------------------------------------------------------
                   int main_fifo = openFIFO(ORCHESTRATOR, O_WRONLY);
 
-                  Task task_finished = findTask(task_status, WEXITSTATUS(status));
+                  Task task_finished =
+                      findTask(task_status, WEXITSTATUS(status));
                   task_finished.phase = COMPLETED;
 
                   struct timeval end_time, duration;
@@ -228,7 +219,6 @@ int main(int argc, char* argv[]) {
                   timersub(&end_time, &task_finished.start_time, &duration);
 
                   // task_finished.start_time = duration;
-
 
                   write(main_fifo, &task_finished, sizeof(task_aux));
                   close(main_fifo);
@@ -241,9 +231,9 @@ int main(int argc, char* argv[]) {
 
                     // Formats the message to be written in the lprint_queue(queue);ogs file
                     int message_length = snprintf(
-                      log_message, sizeof(log_message),
-                      "Task ID: %d, Duration: %ld.%06ld seconds\n",
-                      WEXITSTATUS(status), duration.tv_sec, duration.tv_usec
+                        log_message, sizeof(log_message),
+                        "Task ID: %d, Duration: %ld.%06ld seconds\n",
+                        WEXITSTATUS(status), duration.tv_sec, duration.tv_usec
                     );
 
                     // Writes the message to the logs file
@@ -260,9 +250,7 @@ int main(int argc, char* argv[]) {
 
               _exit(0);
             }
-
           }
-
         }
       }
 
