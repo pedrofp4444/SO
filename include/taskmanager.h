@@ -125,6 +125,6 @@ void print_status(Status* status);
  * Prints the status of the tasks
  * 
 */
-void pretier_print_status(Status status);
+void prettier_print_status(Status status);
 
 #endif

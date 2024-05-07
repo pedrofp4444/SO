@@ -27,7 +27,7 @@ obj/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f obj/* tmp/* bin/* task_fifo log
+	rm -f obj/* tmp/* bin/* task_fifo log test/results/*
 
 format:
 	clang-format -i src/*.c include/*.h

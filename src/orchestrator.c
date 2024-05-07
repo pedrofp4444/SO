@@ -34,10 +34,14 @@ int main(int argc, char* argv[]) {
   }
 
   // Prints the configuration
-  // printf("=== (Orchestrator started) ===\n");
-  // printf("[USING] output_folder: %s\n", output_folder);
-  // printf("[USING] parallel_tasks: %d\n", parallel_tasks);
-  // printf("[USING] scheduling_algorithm: %s\n", scheduling_algorithm);
+  write(1, "=== (Orchestrator started) ===\n", 31);
+  char output[256];
+  snprintf(output, sizeof(output), "[USING] output_folder: %s\n", output_folder);
+  write(1, output, strlen(output));
+  snprintf(output, sizeof(output), "[USING] parallel_tasks: %d\n", parallel_tasks);
+  write(1, output, strlen(output));
+  snprintf(output, sizeof(output), "[USING] scheduling_algorithm: %s\n", scheduling_algorithm);
+  write(1, output, strlen(output));
 
   // Inicializes the queue and the fifo for the comunications between the orchestrator and the clients
   Queue* queue = createQueue();
@@ -107,14 +111,11 @@ int main(int argc, char* argv[]) {
       // Reads the task from the reader-orchestrator pipe
       if (read(fds_read_orchestrator[0], &task, sizeof(task)) > 0) {
         // Inserts the task in the queue
-
         if (task.type == STATUS) {
           if (fork() == 0) {
             char fifo_name[50];
             sprintf(fifo_name, CLIENT "_%d", task.pid);
             int fd_client = open(fifo_name, O_WRONLY);
-
-            // print_status(task_status);
 
             write(fd_client, task_status, sizeof(Status));
 
@@ -130,25 +131,20 @@ int main(int argc, char* argv[]) {
             aux_tasks++;
           }
           updateStatus(task_status, task);
-          // print_status(task_status);
 
         } else {
           enqueueStatus(task_status, task);
-          // print_status(task_status);
           enqueue(queue, task);
-          // print_queue(queue);
         }
       }
-      // Verifies if the queue has more than 2 tasks before executing them [THIS IS JUST DEBUG AND NEEDS TO BE REMOVED, ONLY THE IF STATEMENT]
-      if (queue->size > 2) {
+      // Verifies if the queue has more than 0 tasks before executing them
+      if (queue->size > 0) {
         // Variable to keep track of the number of tasks that are being executed
 
         // While there are tasks to be executed and the number of parallel tasks is not reached, proceed to manage the tasks and execute them
 
         if (!isEmpty(queue)) {
-          // print_queue(queue);
 
-          printf("aux_tasks: %d\n", aux_tasks);
           if (aux_tasks < parallel_tasks) {
             Task task_aux;
             if (strcmp(scheduling_algorithm, "sjf") == 0) {

@@ -172,7 +172,7 @@ void print_status(Status* status) {
   printf("--------------------------------------------\n");
 }
 
-void pretier_print_status(Status status) {
+void prettier_print_status(Status status) {
   // Prints the status of the tasks
   char COMPLETED[] = "--[ COMPLETED ]--\n";
   write(1, COMPLETED, strlen(COMPLETED));

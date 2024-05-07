@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
       int x = 1;
       while (x) {
         if (read(fd_client, &task_status, sizeof(task_status)) > 0) {
-          pretier_print_status(task_status);
+          prettier_print_status(task_status);
           x = 0;
         }
       }
