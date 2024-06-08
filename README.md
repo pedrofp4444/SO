@@ -1,6 +1,6 @@
 # SO
 
-## Grade: XX/20 ⭐️
+## Grade: 18/20 ⭐️
 
 A Server-Client App, made for our [SO](https://www.di.uminho.pt/~jno/sitedi/uc_J304N1.html) class.
 
